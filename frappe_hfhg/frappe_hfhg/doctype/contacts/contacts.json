@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "autoname": "format:{full_name}",
+ "creation": "2024-09-05 09:49:37.648980",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "full_name",
+  "contact_number",
+  "alternative_number",
+  "tab_break_ttcr"
+ ],
+ "fields": [
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "label": "Full Name",
+   "unique": 1
+  },
+  {
+   "default": "+91-",
+   "fieldname": "contact_number",
+   "fieldtype": "Phone",
+   "in_list_view": 1,
+   "label": "Contact Number"
+  },
+  {
+   "fieldname": "alternative_number",
+   "fieldtype": "Phone",
+   "in_list_view": 1,
+   "label": "Alternative Number"
+  },
+  {
+   "fieldname": "tab_break_ttcr",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-29 01:48:33.910057",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Contacts",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "full_name",
+ "track_changes": 1
+}

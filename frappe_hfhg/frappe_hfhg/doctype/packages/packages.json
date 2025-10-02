@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2024-07-26 10:49:46.193674",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "grafts",
+  "graft_price",
+  "technique",
+  "prp"
+ ],
+ "fields": [
+  {
+   "fieldname": "prp",
+   "fieldtype": "Select",
+   "label": "How Many Number Of PRP Assigned?",
+   "options": "0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+  },
+  {
+   "fieldname": "technique",
+   "fieldtype": "Select",
+   "label": "Which Technique Is Decided To This Patient?",
+   "options": "FUE\nB-FUE\nI-FUE\nBig-FUE\nDHI"
+  },
+  {
+   "fieldname": "graft_price",
+   "fieldtype": "Int",
+   "label": "Per Graft Price",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "grafts",
+   "fieldtype": "Int",
+   "label": "Number of Grafts suggested",
+   "non_negative": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-07-26 11:00:54.375036",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Packages",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

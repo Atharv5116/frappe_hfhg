@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TRMT-{###}-{patient}",
+ "creation": "2024-07-12 08:30:52.830920",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "procedure_date",
+  "grafts",
+  "total_amount",
+  "type",
+  "column_break_bktq",
+  "session",
+  "session_type",
+  "center",
+  "status",
+  "connections_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Costing",
+   "reqd": 1
+  },
+  {
+   "fieldname": "procedure_date",
+   "fieldtype": "Date",
+   "label": "Procedure Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_bktq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "center",
+   "fieldtype": "Link",
+   "label": "Center",
+   "options": "Center"
+  },
+  {
+   "default": "0",
+   "fieldname": "grafts",
+   "fieldtype": "Int",
+   "label": "Grafts",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Head to Head\nPRP"
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Data",
+   "label": "Session",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.session_type == \"Paid Session\"",
+   "fieldname": "total_amount",
+   "fieldtype": "Int",
+   "label": "Amount",
+   "mandatory_depends_on": "eval: doc.session_type == \"Paid Session\"",
+   "non_negative": 1
+  },
+  {
+   "depends_on": "eval: doc.status != \"Free\"",
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "session_type",
+   "fieldtype": "Select",
+   "label": "Session Type",
+   "options": "\nFree Session\nPaid Session",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Status",
+   "options": "Not Paid\nFree\nPaid",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-08-27 02:04:18.116881",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Treatment",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

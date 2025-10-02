@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-07-20 11:14:52.847609",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "type",
+  "payment_type",
+  "refund_payment_id",
+  "patient",
+  "total_amount",
+  "total_paid_amount",
+  "transaction_date",
+  "with_gst_check",
+  "column_break_hnux",
+  "total_amount_received",
+  "payment_confirmation",
+  "paid_amount_without_gst",
+  "paid_amount_with_gst",
+  "center",
+  "section_break_pvfl",
+  "without_gst_amount",
+  "payment_entries",
+  "column_break_rrjq",
+  "with_gst_amount",
+  "gst_payment_entries",
+  "refund_gst_payment_entries"
+ ],
+ "fields": [
+  {
+   "depends_on": "eval:doc.type === \"Payment\"",
+   "fieldname": "payment_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payment Type",
+   "mandatory_depends_on": "eval:doc.type === \"Payment\"",
+   "options": "DocType"
+  },
+  {
+   "depends_on": "eval:doc.type === \"Payment\"",
+   "fieldname": "patient",
+   "fieldtype": "Dynamic Link",
+   "label": "Patient",
+   "mandatory_depends_on": "eval:doc.type === \"Payment\"",
+   "options": "payment_type"
+  },
+  {
+   "depends_on": "eval:doc.type === \"Payment\"",
+   "fieldname": "total_amount",
+   "fieldtype": "Int",
+   "label": "Total Amount",
+   "mandatory_depends_on": "eval:doc.type === \"Payment\"",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_pvfl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "without_gst_amount",
+   "fieldtype": "Int",
+   "label": "Without GST Amount",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rrjq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.with_gst_check",
+   "fieldname": "with_gst_amount",
+   "fieldtype": "Int",
+   "label": "With GST Amount",
+   "mandatory_depends_on": "eval: doc.with_gst_check",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_entries",
+   "fieldtype": "Table",
+   "label": "Payment Entries",
+   "options": "Payment Entry"
+  },
+  {
+   "depends_on": "eval: doc.with_gst_check && doc.type === \"Payment\"",
+   "fieldname": "gst_payment_entries",
+   "fieldtype": "Table",
+   "label": "Payment Entries",
+   "options": "GST Payment Entry"
+  },
+  {
+   "default": "0",
+   "fieldname": "with_gst_check",
+   "fieldtype": "Check",
+   "label": "With GST"
+  },
+  {
+   "default": "Payment",
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Payment\nRefund",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.type === \"Refund\"",
+   "fieldname": "refund_payment_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Refund Payment Id",
+   "mandatory_depends_on": "eval:doc.type === \"Refund\"",
+   "options": "Payment"
+  },
+  {
+   "depends_on": "eval:doc.type === \"Refund\"",
+   "fieldname": "total_paid_amount",
+   "fieldtype": "Int",
+   "label": "Total Paid Amount",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.type === \"Refund\"",
+   "fieldname": "paid_amount_with_gst",
+   "fieldtype": "Int",
+   "label": "Paid Amount With GST",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.type === \"Refund\"",
+   "fieldname": "paid_amount_without_gst",
+   "fieldtype": "Int",
+   "label": "Paid Amount Without GST",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.with_gst_check && doc.type === \"Refund\"",
+   "fieldname": "refund_gst_payment_entries",
+   "fieldtype": "Table",
+   "label": "Payment Entries",
+   "options": "Payment Entry"
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date"
+  },
+  {
+   "fieldname": "total_amount_received",
+   "fieldtype": "Data",
+   "label": "Total Amount Received",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hnux",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_confirmation",
+   "fieldtype": "Select",
+   "label": "Payment Confirmation",
+   "options": "\nReceived\nNot Received\nPartial Received"
+  },
+  {
+   "fieldname": "center",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Center",
+   "options": "Center",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-08 22:53:50.218862",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Payment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,69 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{lead}-{old_status}-to-{new_status}-{##}",
+ "creation": "2024-12-03 13:00:01.734117",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead",
+  "old_status",
+  "new_status",
+  "date",
+  "user"
+ ],
+ "fields": [
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "label": "Lead",
+   "options": "Lead"
+  },
+  {
+   "fieldname": "old_status",
+   "fieldtype": "Data",
+   "label": "Old Status"
+  },
+  {
+   "fieldname": "new_status",
+   "fieldtype": "Data",
+   "label": "New Status"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-07 16:23:35.681900",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Lead Status Track",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

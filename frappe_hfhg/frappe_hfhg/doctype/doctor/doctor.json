@@ -1,0 +1,206 @@
+{
+ "actions": [],
+ "autoname": "format:{fullname}",
+ "creation": "2024-06-06 22:57:04.788972",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "fullname",
+  "email",
+  "contact_number",
+  "center",
+  "gender",
+  "schedule_tab",
+  "add_new_slots_section",
+  "from_date",
+  "from_slot",
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "add_slots",
+  "column_break_qutx",
+  "to_date",
+  "to_slot",
+  "mode_of_appointment",
+  "patients_per_slot",
+  "your_schedule_section",
+  "table_schedule"
+ ],
+ "fields": [
+  {
+   "fieldname": "fullname",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Full Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email",
+   "reqd": 1
+  },
+  {
+   "default": "+91-",
+   "fieldname": "contact_number",
+   "fieldtype": "Phone",
+   "in_list_view": 1,
+   "label": "Contact Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "\nMale\nFemale"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "schedule_tab",
+   "fieldtype": "Tab Break",
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To"
+  },
+  {
+   "fieldname": "column_break_qutx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "add_new_slots_section",
+   "fieldtype": "Section Break",
+   "label": "Add new slots"
+  },
+  {
+   "default": "0",
+   "fieldname": "patients_per_slot",
+   "fieldtype": "Int",
+   "label": "Patients per slot",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "your_schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Your Schedule"
+  },
+  {
+   "default": "10:00 AM",
+   "fieldname": "from_slot",
+   "fieldtype": "Select",
+   "label": "From Slot",
+   "options": "12:00 AM\n12:30 AM\n01:00 AM\n01:30 AM\n02:00 AM\n02:30 AM\n03:00 AM\n03:30 AM\n04:00 AM\n04:30 AM\n05:00 AM\n05:30 AM\n06:00 AM\n06:30 AM\n07:00 AM\n07:30 AM\n08:00 AM\n08:30 AM\n09:00 AM\n09:30 AM\n10:00 AM\n10:30 AM\n11:00 AM\n11:30 AM\n12:00 PM\n12:30 PM\n01:00 PM\n01:30 PM\n02:00 PM\n02:30 PM\n03:00 PM\n03:30 PM\n04:00 PM\n04:30 PM\n05:00 PM\n05:30 PM\n06:00 PM\n06:30 PM\n07:00 PM\n07:30 PM\n08:00 PM\n08:30 PM\n09:00 PM\n09:30 PM\n10:00 PM\n10:30 PM\n11:00 PM\n11:30 PM"
+  },
+  {
+   "default": "05:00 PM",
+   "fieldname": "to_slot",
+   "fieldtype": "Select",
+   "label": "To Slot",
+   "options": "12:00 AM\n12:30 AM\n01:00 AM\n01:30 AM\n02:00 AM\n02:30 AM\n03:00 AM\n03:30 AM\n04:00 AM\n04:30 AM\n05:00 AM\n05:30 AM\n06:00 AM\n06:30 AM\n07:00 AM\n07:30 AM\n08:00 AM\n08:30 AM\n09:00 AM\n09:30 AM\n10:00 AM\n10:30 AM\n11:00 AM\n11:30 AM\n12:00 PM\n12:30 PM\n01:00 PM\n01:30 PM\n02:00 PM\n02:30 PM\n03:00 PM\n03:30 PM\n04:00 PM\n04:30 PM\n05:00 PM\n05:30 PM\n06:00 PM\n06:30 PM\n07:00 PM\n07:30 PM\n08:00 PM\n08:30 PM\n09:00 PM\n09:30 PM\n10:00 PM\n10:30 PM\n11:00 PM\n11:30 PM"
+  },
+  {
+   "fieldname": "mode_of_appointment",
+   "fieldtype": "Select",
+   "label": "Mode of appointment",
+   "options": "In-Person\nCall"
+  },
+  {
+   "default": "1",
+   "fieldname": "sunday",
+   "fieldtype": "Check",
+   "label": "Sunday"
+  },
+  {
+   "default": "1",
+   "fieldname": "monday",
+   "fieldtype": "Check",
+   "label": "Monday"
+  },
+  {
+   "default": "1",
+   "fieldname": "tuesday",
+   "fieldtype": "Check",
+   "label": "Tuesday"
+  },
+  {
+   "default": "1",
+   "fieldname": "wednesday",
+   "fieldtype": "Check",
+   "label": "Wednesday"
+  },
+  {
+   "default": "1",
+   "fieldname": "thursday",
+   "fieldtype": "Check",
+   "label": "Thursday"
+  },
+  {
+   "default": "1",
+   "fieldname": "friday",
+   "fieldtype": "Check",
+   "label": "Friday"
+  },
+  {
+   "default": "1",
+   "fieldname": "saturday",
+   "fieldtype": "Check",
+   "label": "Saturday"
+  },
+  {
+   "fieldname": "add_slots",
+   "fieldtype": "Button",
+   "label": "Add Slots"
+  },
+  {
+   "fieldname": "table_schedule",
+   "fieldtype": "Table",
+   "options": "Schedule"
+  },
+  {
+   "fieldname": "center",
+   "fieldtype": "Link",
+   "label": "Center",
+   "options": "Center",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-26 10:23:31.964126",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Doctor",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "fullname"
+}

@@ -1,0 +1,44 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2025-03-05 03:25:45.624780",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "json": "{}",
+ "letterhead": null,
+ "modified": "2025-07-02 16:40:40.872509",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Master Reminder Report",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "ToDo",
+ "report_name": "Master Reminder Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Marketing Head"
+  },
+  {
+   "role": "HOD"
+  },
+  {
+   "role": "Executive"
+  },
+  {
+   "role": "Receptionist"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
+ "timeout": 0
+}

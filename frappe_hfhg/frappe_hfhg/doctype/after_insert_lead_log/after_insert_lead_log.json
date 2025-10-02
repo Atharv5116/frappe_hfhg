@@ -1,0 +1,112 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-26 23:23:02.024471",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead",
+  "contact_number",
+  "status",
+  "contact",
+  "executive",
+  "creation1",
+  "alternative_number",
+  "lead_owner",
+  "if_condition_result",
+  "object",
+  "original_lead"
+ ],
+ "fields": [
+  {
+   "fieldname": "lead",
+   "fieldtype": "Data",
+   "label": "lead",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "contact number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact",
+   "fieldtype": "Data",
+   "label": "contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "executive",
+   "fieldtype": "Data",
+   "label": "executive",
+   "read_only": 1
+  },
+  {
+   "fieldname": "creation1",
+   "fieldtype": "Data",
+   "label": "creation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "object",
+   "fieldtype": "Long Text",
+   "label": "object",
+   "read_only": 1
+  },
+  {
+   "fieldname": "alternative_number",
+   "fieldtype": "Data",
+   "label": "alternative number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lead_owner",
+   "fieldtype": "Data",
+   "label": "lead owner",
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_lead",
+   "fieldtype": "Long Text",
+   "label": "original_lead",
+   "read_only": 1
+  },
+  {
+   "fieldname": "if_condition_result",
+   "fieldtype": "Data",
+   "label": "if condition result",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-02-26 23:48:26.184137",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "After Insert Lead Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

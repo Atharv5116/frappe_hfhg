@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "autoname": "format:{city}",
+ "creation": "2024-06-10 08:52:32.367700",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "city",
+  "receptionist",
+  "clinic_manager",
+  "followup_doctor",
+  "contact_number",
+  "doctors",
+  "connections_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "City",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "receptionist",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Receptionist",
+   "options": "Receptionist",
+   "reqd": 1
+  },
+  {
+   "fieldname": "clinic_manager",
+   "fieldtype": "Link",
+   "label": "Clinic Manager",
+   "options": "User"
+  },
+  {
+   "fieldname": "followup_doctor",
+   "fieldtype": "Link",
+   "label": "Followup Doctor",
+   "options": "Doctor"
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Phone",
+   "label": "Contact Number"
+  },
+  {
+   "fieldname": "doctors",
+   "fieldtype": "Small Text",
+   "label": "Doctors"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-19 12:47:53.086978",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Center",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "city"
+}

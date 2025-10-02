@@ -1,0 +1,32 @@
+{
+  "name": "frappe_hfhg",
+  "version": "1.0.0",
+  "description": "hfhg",
+  "scripts": {
+    "postinstall": "cd whatsapp_chat && yarn install",
+    "dev": "cd whatsapp_chat && yarn dev",
+    "build": "cd whatsapp_chat && yarn build"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@chakra-ui/react": "^2.5.5",
+    "@daypilot/daypilot-lite-react": "^3.25.0",
+    "@emotion/react": "^11.10.6",
+    "@emotion/styled": "^11.10.6",
+    "@fullcalendar/daygrid": "^5.9.0",
+    "@fullcalendar/interaction": "^5.9.0",
+    "@fullcalendar/react": "^5.9.0",
+    "@vueuse/core": "^10.3.0",
+    "framer-motion": "^10.11.2",
+    "lodash": "4.17.21",
+    "lucide-react": "^0.132.0",
+    "nanoid": "^4.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.6",
+    "react-syntax-highlighter": "^15.5.0",
+    "rehype-raw": "^6.1.1",
+    "remark-gfm": "^3.0.1"
+  }
+}

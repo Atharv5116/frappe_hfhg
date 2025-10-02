@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-29 04:19:11.721428",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead",
+  "contacts",
+  "contact_number",
+  "object"
+ ],
+ "fields": [
+  {
+   "fieldname": "lead",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lead",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contacts",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Contacts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "object",
+   "fieldtype": "Long Text",
+   "label": "Object ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "contact number",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-29 18:28:52.139503",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Duplicate Leads Logs",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

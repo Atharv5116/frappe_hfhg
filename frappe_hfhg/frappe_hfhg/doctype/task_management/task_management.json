@@ -1,0 +1,162 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TASK-{####}",
+ "creation": "2024-08-28 07:44:37.809565",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "due_date",
+  "date",
+  "column_break_syse",
+  "status",
+  "allocated_to",
+  "assigned_by",
+  "section_break_gtqd",
+  "description",
+  "column_break_hjds",
+  "lead",
+  "lead_first_name",
+  "city",
+  "center",
+  "surgery_date",
+  "grafts",
+  "technique"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_syse",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "New\nWork in Progress\nComplete\nPending\nHold"
+  },
+  {
+   "fieldname": "allocated_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Allocated To",
+   "options": "User"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "section_break_gtqd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date"
+  },
+  {
+   "fieldname": "assigned_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assigned By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_hjds",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lead",
+   "options": "Lead"
+  },
+  {
+   "fetch_from": "lead.first_name",
+   "fieldname": "lead_first_name",
+   "fieldtype": "Data",
+   "label": "Lead First Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "lead.city",
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "lead.center",
+   "fieldname": "center",
+   "fieldtype": "Data",
+   "label": "Center",
+   "read_only": 1
+  },
+  {
+   "fieldname": "surgery_date",
+   "fieldtype": "Date",
+   "label": "Surgery Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grafts",
+   "fieldtype": "Int",
+   "label": "Grafts",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "technique",
+   "fieldtype": "Data",
+   "label": "Technique",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-11 12:20:00.193737",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Task Management",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

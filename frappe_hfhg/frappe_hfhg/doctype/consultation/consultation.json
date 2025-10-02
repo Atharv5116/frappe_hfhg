@@ -1,0 +1,279 @@
+{
+ "actions": [],
+ "autoname": "format:{patient}-{MM}-{DD}-{##}",
+ "creation": "2024-06-10 09:04:18.595255",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "first_name",
+  "city",
+  "phone",
+  "profession",
+  "lead_source",
+  "lead_mode",
+  "center",
+  "executive",
+  "previous_executive",
+  "executive_changed_date",
+  "assign_by",
+  "status",
+  "handle_by",
+  "followup_date",
+  "followup_title",
+  "created_on",
+  "column_break_nwcc",
+  "payment",
+  "total_amount",
+  "mode",
+  "date",
+  "doctor",
+  "slot",
+  "payment_status",
+  "note",
+  "tab_break_wzbc"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Lead",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "doctor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Doctor",
+   "options": "Doctor",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.center",
+   "fetch_if_empty": 1,
+   "fieldname": "center",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Center",
+   "options": "Center",
+   "reqd": 1
+  },
+  {
+   "default": "Scheduled",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Scheduled\nBooked\nSpot Booking\nNon Booked\nMedi-PRP\nNot Visited\nRescheduled",
+   "permlevel": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Consultation Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "slot",
+   "fieldtype": "Select",
+   "label": "Slot",
+   "options": "12:00 AM\n12:30 AM\n01:00 AM\n01:30 AM\n02:00 AM\n02:30 AM\n03:00 AM\n03:30 AM\n04:00 AM\n04:30 AM\n05:00 AM\n05:30 AM\n06:00 AM\n06:30 AM\n07:00 AM\n07:30 AM\n08:00 AM\n08:30 AM\n09:00 AM\n09:30 AM\n10:00 AM\n10:30 AM\n11:00 AM\n11:30 AM\n12:00 PM\n12:30 PM\n01:00 PM\n01:30 PM\n02:00 PM\n02:30 PM\n03:00 PM\n03:30 PM\n04:00 PM\n04:30 PM\n05:00 PM\n05:30 PM\n06:00 PM\n06:30 PM\n07:00 PM\n07:30 PM\n08:00 PM\n08:30 PM\n09:00 PM\n09:30 PM\n10:00 PM\n10:30 PM\n11:00 PM\n11:30 PM",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.status == 'Followup'",
+   "fieldname": "followup_date",
+   "fieldtype": "Date",
+   "label": "Followup Date",
+   "mandatory_depends_on": "eval:doc.status == 'Followup' "
+  },
+  {
+   "fieldname": "column_break_nwcc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.status == 'Followup' ",
+   "fieldname": "followup_title",
+   "fieldtype": "Data",
+   "label": "Followup Title",
+   "mandatory_depends_on": "eval:doc.status == 'Followup' "
+  },
+  {
+   "fetch_from": "patient.executive",
+   "fieldname": "executive",
+   "fieldtype": "Link",
+   "label": "Executive",
+   "options": "Executive",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "label": "Mode of appointment",
+   "options": "In-Person\nCall",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.city",
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "City",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "created_on",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Created On",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.contact_number",
+   "fieldname": "phone",
+   "fieldtype": "Phone",
+   "in_list_view": 1,
+   "label": "Phone",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment",
+   "options": "Paid\nFOC",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.executive",
+   "fetch_from": "patient.assign_by",
+   "fieldname": "assign_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assign By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.source",
+   "fieldname": "lead_source",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lead Source",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.mode",
+   "fieldname": "lead_mode",
+   "fieldtype": "Data",
+   "label": "Lead Mode",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_amount",
+   "fieldtype": "Int",
+   "label": "Amount",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tab_break_wzbc",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "default": "Not Paid",
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "Not Paid\nPaid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  },
+  {
+   "fetch_from": "patient.executive_changed_date",
+   "fieldname": "executive_changed_date",
+   "fieldtype": "Date",
+   "label": "Executive Changed Date",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.previous_executive",
+   "fieldname": "previous_executive",
+   "fieldtype": "Link",
+   "label": "Previous Executive",
+   "options": "Executive",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.profession",
+   "fetch_if_empty": 1,
+   "fieldname": "profession",
+   "fieldtype": "Data",
+   "label": "Profession",
+   "reqd": 1
+  },
+  {
+   "fieldname": "handle_by",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Handle by"
+  },
+  {
+   "fetch_from": "patient.first_name",
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "First Name"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-03 17:08:45.389793",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Consultation",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "first_name",
+ "track_changes": 1
+}

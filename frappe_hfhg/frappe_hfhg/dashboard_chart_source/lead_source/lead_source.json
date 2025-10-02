@@ -1,0 +1,13 @@
+{
+ "creation": "2024-11-06 16:51:55.507648",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart Source",
+ "idx": 0,
+ "modified": "2024-11-06 16:51:55.507648",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Lead Source",
+ "owner": "Administrator",
+ "source_name": "Lead Source",
+ "timeseries": 0
+}

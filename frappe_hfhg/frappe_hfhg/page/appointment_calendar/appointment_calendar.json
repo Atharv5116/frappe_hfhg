@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2024-09-10 13:08:38.165341",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2024-09-10 13:08:38.165341",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "appointment-calendar",
+ "owner": "Administrator",
+ "page_name": "appointment-calendar",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Appointment Calendar"
+}

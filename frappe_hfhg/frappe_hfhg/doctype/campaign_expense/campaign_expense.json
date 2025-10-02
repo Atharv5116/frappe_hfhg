@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{date}-{ad_name}-{###}",
+ "creation": "2025-01-16 10:46:40.284788",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "ads",
+  "campaign",
+  "date",
+  "amount",
+  "gst_amount",
+  "total_amount",
+  "ad_name"
+ ],
+ "fields": [
+  {
+   "fetch_from": "ad_name.campaign",
+   "fieldname": "campaign",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Campaign"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Data",
+   "label": "Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "gst_amount",
+   "fieldtype": "Data",
+   "label": "GST Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Data",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ads",
+   "fieldtype": "Link",
+   "label": "Ads",
+   "options": "Meta Ads",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "ads.ads_name",
+   "fieldname": "ad_name",
+   "fieldtype": "Data",
+   "label": "Ad Name"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-24 11:30:30.274204",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Campaign Expense",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

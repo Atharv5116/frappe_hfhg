@@ -1,0 +1,163 @@
+{
+ "actions": [],
+ "autoname": "format:FOLLOWUP-{DD}{#####}",
+ "creation": "2024-06-12 08:14:00.850644",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "date",
+  "center",
+  "column_break_jmba",
+  "status",
+  "allocated_to",
+  "receptionist",
+  "surgery_date",
+  "technique",
+  "grafts",
+  "patient_name",
+  "patient_contact_number",
+  "section_break_ekif",
+  "description",
+  "reference_section",
+  "reference_type",
+  "column_break_huzm",
+  "reference_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Followup Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Open\nClosed\nCancelled"
+  },
+  {
+   "fieldname": "allocated_to",
+   "fieldtype": "Link",
+   "label": "Allocated To",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_jmba",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ekif",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "reference_type",
+   "fieldtype": "Link",
+   "label": "Reference Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "column_break_huzm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_type"
+  },
+  {
+   "fieldname": "center",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Center",
+   "options": "Center"
+  },
+  {
+   "fetch_from": "center.receptionist",
+   "fieldname": "receptionist",
+   "fieldtype": "Link",
+   "label": "Receptionist",
+   "options": "Receptionist",
+   "read_only": 1
+  },
+  {
+   "fieldname": "surgery_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Surgery Date"
+  },
+  {
+   "fieldname": "technique",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Technique"
+  },
+  {
+   "fieldname": "grafts",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Grafts"
+  },
+  {
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient name"
+  },
+  {
+   "fieldname": "patient_contact_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient contact number"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-17 20:43:29.753813",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Doctor Followup",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

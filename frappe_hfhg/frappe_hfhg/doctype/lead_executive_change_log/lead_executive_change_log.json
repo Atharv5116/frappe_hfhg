@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-10 19:30:06.812711",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead",
+  "date_time",
+  "executive_from",
+  "executive_to",
+  "assign_by",
+  "patient_name",
+  "contact_number",
+  "lead_created_on",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "executive_from",
+   "fieldtype": "Link",
+   "label": "executive_from",
+   "options": "Executive",
+   "read_only": 1
+  },
+  {
+   "fieldname": "executive_to",
+   "fieldtype": "Link",
+   "label": "executive_to",
+   "options": "Executive",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assign_by",
+   "fieldtype": "Link",
+   "label": "assign_by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "label": "lead",
+   "options": "Lead",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date_time",
+   "fieldtype": "Datetime",
+   "label": "date_time",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "lead.first_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "label": "Patient name"
+  },
+  {
+   "fetch_from": "lead.contact_number",
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact number"
+  },
+  {
+   "fetch_from": "lead.created_on",
+   "fieldname": "lead_created_on",
+   "fieldtype": "Data",
+   "label": "Lead created on"
+  },
+  {
+   "fetch_from": "lead.status",
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-02-24 13:14:59.472254",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Lead Executive Change Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

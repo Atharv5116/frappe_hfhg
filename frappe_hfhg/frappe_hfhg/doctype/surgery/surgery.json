@@ -1,0 +1,388 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{patient}",
+ "creation": "2024-06-19 06:26:10.609397",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "details_section",
+  "patient",
+  "first_name",
+  "city",
+  "contact_number",
+  "profession",
+  "lead_source",
+  "lead_created_date",
+  "lead_mode",
+  "booking_date",
+  "surgery_transaction_date",
+  "center",
+  "doctor",
+  "technique",
+  "executive",
+  "previous_executive",
+  "executive_changed_date",
+  "status",
+  "surgery_status",
+  "column_break_sgdh",
+  "surgery_date",
+  "grafts",
+  "graft_price",
+  "total_amount",
+  "discount_amount",
+  "amount_paid",
+  "pending_amount",
+  "with_gst_amount",
+  "without_gst_amount",
+  "prp",
+  "assign_by",
+  "note",
+  "bt_status",
+  "surgeries_tab",
+  "pending_grafts",
+  "grafts_surgeries",
+  "section_break_czwt",
+  "postpone_surgery",
+  "section_break_mqyl",
+  "cancel_type",
+  "reason_for_cancel",
+  "blood_test_tab",
+  "blood_test_table",
+  "connections_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Costing",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "pending_amount",
+   "fieldtype": "Int",
+   "label": "Pending Amount",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_sgdh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "patient.city",
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "City",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.contact_number",
+   "fieldname": "contact_number",
+   "fieldtype": "Phone",
+   "in_list_view": 1,
+   "label": "Contact Number",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.center",
+   "fetch_if_empty": 1,
+   "fieldname": "center",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Center",
+   "options": "Center"
+  },
+  {
+   "fieldname": "doctor",
+   "fieldtype": "Link",
+   "label": "Doctor",
+   "options": "Doctor"
+  },
+  {
+   "fetch_from": ".technique",
+   "fieldname": "technique",
+   "fieldtype": "Select",
+   "label": "Which Technique Is Decided To This Patient?",
+   "options": "FUE\nB-FUE\nI-FUE\nBig-FUE\nDHT\nSapphire FUE"
+  },
+  {
+   "fieldname": "prp",
+   "fieldtype": "Select",
+   "label": "How Many Number Of PRP Assigned?",
+   "options": "0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+  },
+  {
+   "fieldname": "grafts",
+   "fieldtype": "Int",
+   "label": "Number of Grafts suggested",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "amount_paid",
+   "fieldtype": "Int",
+   "label": "Booking Amount Paid",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fetch_from": "patient.executive",
+   "fieldname": "executive",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Executive",
+   "options": "Executive",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.book_date",
+   "fieldname": "booking_date",
+   "fieldtype": "Date",
+   "label": "Booking Date"
+  },
+  {
+   "fieldname": "surgery_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Surgery Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Float",
+   "label": "Total Amount",
+   "non_negative": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "graft_price",
+   "fieldtype": "Float",
+   "label": "Per Graft Price",
+   "non_negative": 1,
+   "precision": "2"
+  },
+  {
+   "default": "Not Paid",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Status",
+   "options": "Paid\nPartially Paid\nNot Paid\nRefunded",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "discount_amount",
+   "fieldtype": "Int",
+   "label": "Discount Amount",
+   "read_only": 1
+  },
+  {
+   "default": "Booked",
+   "fieldname": "surgery_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Booked\nPartially Completed\nCompleted\nCancelled\nHold",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "patient.lead_source",
+   "fieldname": "lead_source",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lead Source",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.lead_created_date",
+   "fieldname": "lead_created_date",
+   "fieldtype": "Date",
+   "label": "Lead Created Date",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.lead_mode",
+   "fieldname": "lead_mode",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lead Mode",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.executive",
+   "fetch_from": "patient.assign_by",
+   "fieldname": "assign_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assign By",
+   "options": "User"
+  },
+  {
+   "fieldname": "surgeries_tab",
+   "fieldtype": "Tab Break",
+   "label": "Surgeries"
+  },
+  {
+   "default": "0",
+   "fieldname": "pending_grafts",
+   "fieldtype": "Int",
+   "label": "Pending Grafts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grafts_surgeries",
+   "fieldtype": "Table",
+   "label": "Grafts Surgeries",
+   "options": "Graft Entry"
+  },
+  {
+   "fieldname": "blood_test_tab",
+   "fieldtype": "Tab Break",
+   "label": "Blood Test"
+  },
+  {
+   "fetch_from": "patient.note",
+   "fetch_if_empty": 1,
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  },
+  {
+   "fieldname": "blood_test_table",
+   "fieldtype": "Table",
+   "options": "Blood Test"
+  },
+  {
+   "fetch_from": "patient.previous_executive",
+   "fieldname": "previous_executive",
+   "fieldtype": "Link",
+   "label": "Previous Executive",
+   "options": "Executive",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.executive_changed_date",
+   "fieldname": "executive_changed_date",
+   "fieldtype": "Date",
+   "label": "Executive Changed Date",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.with_gst_amount",
+   "fieldname": "with_gst_amount",
+   "fieldtype": "Data",
+   "label": "With GST Amount"
+  },
+  {
+   "fetch_from": "patient.without_gst_amount",
+   "fieldname": "without_gst_amount",
+   "fieldtype": "Data",
+   "label": "Without GST Amount"
+  },
+  {
+   "fetch_from": "patient.profession",
+   "fieldname": "profession",
+   "fieldtype": "Data",
+   "label": "Profession",
+   "read_only": 1
+  },
+  {
+   "fieldname": "surgery_transaction_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Surgery Transaction Date",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.first_name",
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "First Name"
+  },
+  {
+   "fieldname": "bt_status",
+   "fieldtype": "Select",
+   "label": "BT Status",
+   "options": "\nReceived\nPartial Received\nAbnormal\nNot Received"
+  },
+  {
+   "fieldname": "section_break_czwt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "postpone_surgery",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Postpone Surgery",
+   "options": "Postpone Surgery"
+  },
+  {
+   "fieldname": "section_break_mqyl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.surgery_status == \"Cancelled\"",
+   "fieldname": "cancel_type",
+   "fieldtype": "Select",
+   "label": "Cancel Type",
+   "options": "With Refund\nWithout Refund"
+  },
+  {
+   "depends_on": "eval:doc.surgery_status == \"Cancelled\"",
+   "fieldname": "reason_for_cancel",
+   "fieldtype": "Data",
+   "label": "Reason for Cancel"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-03 18:07:11.150004",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Surgery",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "first_name",
+ "track_changes": 1
+}

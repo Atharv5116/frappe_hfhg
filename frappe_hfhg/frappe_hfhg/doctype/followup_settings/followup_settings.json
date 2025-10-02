@@ -1,0 +1,51 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-09-12 22:24:05.503035",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "followups",
+  "followup_intervals"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "followups",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Followups",
+   "options": "0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18",
+   "reqd": 1
+  },
+  {
+   "fieldname": "followup_intervals",
+   "fieldtype": "Table",
+   "label": "Followup Intervals",
+   "options": "Followup Interval"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-10-28 21:25:55.910546",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Followup Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

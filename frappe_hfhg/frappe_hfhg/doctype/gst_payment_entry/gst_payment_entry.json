@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-07-20 11:25:21.206528",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "method",
+  "payment_in",
+  "amount",
+  "gst_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "method",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Method",
+   "options": "Cash\nCard\nCheque\nBajaj Finance\nNet Banking",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "gst_amount",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "GST Amount",
+   "non_negative": 1,
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Amount",
+   "non_negative": 1,
+   "precision": "2",
+   "reqd": 1
+  },
+  {
+   "fieldname": "payment_in",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payment In",
+   "options": "Payment In"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-05-14 17:14:44.021876",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "GST Payment Entry",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

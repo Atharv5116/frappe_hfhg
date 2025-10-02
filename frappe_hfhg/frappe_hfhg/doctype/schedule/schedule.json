@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-06-06 23:13:39.667549",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "doctor",
+  "date",
+  "day",
+  "slot",
+  "patients",
+  "mode"
+ ],
+ "fields": [
+  {
+   "fieldname": "doctor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Doctor",
+   "options": "Doctor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "day",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Day",
+   "options": "sunday\nmonday\ntuesday\nwednesday\nthursday\nfriday\nsaturday",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "patients",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Patients per slot",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Mode of appointment",
+   "options": "In-Person\nCall",
+   "reqd": 1
+  },
+  {
+   "fieldname": "slot",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Slot",
+   "options": "12:00 AM\n12:30 AM\n01:00 AM\n01:30 AM\n02:00 AM\n02:30 AM\n03:00 AM\n03:30 AM\n04:00 AM\n04:30 AM\n05:00 AM\n05:30 AM\n06:00 AM\n06:30 AM\n07:00 AM\n07:30 AM\n08:00 AM\n08:30 AM\n09:00 AM\n09:30 AM\n10:00 AM\n10:30 AM\n11:00 AM\n11:30 AM\n12:00 PM\n12:30 PM\n01:00 PM\n01:30 PM\n02:00 PM\n02:30 PM\n03:00 PM\n03:30 PM\n04:00 PM\n04:30 PM\n05:00 PM\n05:30 PM\n06:00 PM\n06:30 PM\n07:00 PM\n07:30 PM\n08:00 PM\n08:30 PM\n09:00 PM\n09:30 PM\n10:00 PM\n10:30 PM\n11:00 PM\n11:30 PM",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-26 10:31:15.301753",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Schedule",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

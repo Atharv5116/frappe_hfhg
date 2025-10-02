@@ -1,0 +1,7 @@
+.dt-cell--focus .dt-cell__content {
+    border-color: var(--gray-900) !important;
+}
+
+html[data-theme-mode="dark"] .dt-cell--focus .dt-cell__content {
+    border-color: var(--gray-100) !important;
+}

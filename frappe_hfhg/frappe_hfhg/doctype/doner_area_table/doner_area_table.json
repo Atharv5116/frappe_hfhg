@@ -1,0 +1,56 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-09-29 17:26:57.640848",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "hairs_per_graft",
+  "scalp",
+  "body",
+  "total"
+ ],
+ "fields": [
+  {
+   "fieldname": "hairs_per_graft",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Hairs per Graft",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "scalp",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Scalp"
+  },
+  {
+   "default": "0",
+   "fieldname": "body",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Body"
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-09-29 17:39:51.168445",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Doner Area Table",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-01-21 00:50:48.991764",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-01-26 20:40:05.571835",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "whatsapp_chat",
+ "owner": "Administrator",
+ "page_name": "whatsapp_chat",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Whatsapp Chat"
+}

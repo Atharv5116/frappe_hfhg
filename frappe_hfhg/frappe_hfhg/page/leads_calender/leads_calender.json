@@ -1,0 +1,26 @@
+{
+ "content": null,
+ "creation": "2024-09-10 12:08:09.975273",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2024-09-10 12:08:17.081198",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "leads-calender",
+ "owner": "Administrator",
+ "page_name": "leads-calender",
+ "roles": [
+  {
+   "role": "Doctor"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Leads Calender"
+}
