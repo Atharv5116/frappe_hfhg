@@ -1364,10 +1364,11 @@ def create_lead_background(data):
         
         # Determine center from city parameter
         city = data.get("city")
+        center = data.get("center")
         
-        if city:
+        if center:
             # Use city as center - convert to proper case: "bangalore" → "Bangalore"
-            lead.center = city.title()
+            lead.center = center.title()
         else:
             # Fallback if no city provided
             lead.center = "Unknown"
