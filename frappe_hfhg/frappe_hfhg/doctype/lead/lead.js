@@ -546,7 +546,7 @@ frappe.call({
                       frm.dirty();
                     });
 
-                    // Save changes on Enter key
+                    // Save changes on Enter key....
                     input.addEventListener("keypress", (e) => {
                       if (e.key === "Enter") {
                         input.blur();

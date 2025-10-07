@@ -2457,7 +2457,7 @@ def get_patient_photos(patient_name):
     if not patient_name:
         return []
     
-    # Get the Lead document
+    # Get the Lead document...
     if not frappe.db.exists('Lead', patient_name):
         return []
     

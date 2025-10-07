@@ -156,6 +156,6 @@ window.show_patient_photo_dialog = function(frm, patient_name) {
   // Load existing photos
   load_photos();
   
-  // Show the dialog
+  // Show the dialog...
   photo_dialog.show();
 }; 
