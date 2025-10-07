@@ -1374,7 +1374,7 @@ def create_lead_background(data):
             lead.center = "Unknown"
 
         # Set campaign_name FIRST (required for assignment logic)
-        lead.campaign_name = data.get("campaign_name")
+        lead.campaign_name = "SEO_Form"
         
         # Set other fields
         lead.mode = data.get("mode", "Workflow")
