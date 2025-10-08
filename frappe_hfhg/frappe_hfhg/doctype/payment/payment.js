@@ -3,13 +3,6 @@
 
 frappe.ui.form.on("Payment", {
   refresh: function (frm) {
-    // Add Upload Patient Photo button
-    if (!frm.is_new() && frm.doc.patient) {
-      frm.add_custom_button("Upload Patient Photo", function () {
-        show_patient_photo_dialog(frm);
-      });
-    }
-
     frm.fields_dict["gst_payment_entries"].grid.wrapper.on(
       "change",
       'input[data-fieldname="amount"]',
