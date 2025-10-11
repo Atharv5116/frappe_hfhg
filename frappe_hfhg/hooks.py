@@ -12,8 +12,7 @@ app_license = "mit"
 # include js, css files in header of desk.html
 # app_include_css = "assets/frappe_hfhg/js/appointment_ui.bundle.css"
 app_include_js = [
-    "/assets/frappe_hfhg/js/app_customizations.js",
-    "/assets/frappe_hfhg/js/patient_photo_manager.js"
+    "/assets/frappe_hfhg/js/app_customizations.js"
 ]
 
 # include js, css files in header of web template
