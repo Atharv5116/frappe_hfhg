@@ -189,8 +189,6 @@ class Lead(Document):
 						min_leads = min(lead_counts.values(), default=0)
 						least_loaded_executives = [exec_name for exec_name, count in lead_counts.items() if count == min_leads]
 
-						# If multiple members have the same count, assign randomly among them
-						import random
 						assigned_executive = random.choice(least_loaded_executives)
 						self.executive = assigned_executive
 						
