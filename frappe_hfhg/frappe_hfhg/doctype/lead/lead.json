@@ -23,6 +23,7 @@
   "full_name",
   "city",
   "source",
+  "dynamic_source_name",
   "imported_source",
   "source_reference",
   "source_youtube",
@@ -335,10 +336,16 @@
   },
   {
    "fieldname": "source",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Source",
-   "options": "\nWebsite\nWebsite Form\nGoogle Adword\nGoogle GMB\nFacebook\nInstagram\nInfluencer\nWhatsApp\nHoarding\nReferences\nYoutube\nYoutuber\nQuora\nPinterest\nTwitter\nWalk In\nCall\nEmail\nJust dial\nImported Data"
+   "options": "Source"
+  },
+  {
+   "fieldname": "dynamic_source_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Source Name"
   },
   {
    "fieldname": "mode",
