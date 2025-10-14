@@ -646,9 +646,9 @@
      },
      {
       "fieldname": "ht_technique",
-      "fieldtype": "Select",
+      "fieldtype": "Link",
       "label": "HT Technique",
-      "options": "FUE\nB-FUE\nI-FUE\nBig-FUE\nDHI"
+      "options": "HT Technique"
      },
      {
       "fieldname": "column_break_vzfd",
