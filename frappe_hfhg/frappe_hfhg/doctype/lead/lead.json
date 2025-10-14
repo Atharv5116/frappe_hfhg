@@ -1,1046 +1,1046 @@
 {
- "actions": [],
- "autoname": "format:{first_name} {middle_name} {last_name}",
- "creation": "2024-05-31 02:56:48.616324",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "inquiry_details_tab",
-  "status_section",
-  "executive",
-  "center",
-  "receptionist",
-  "distance",
-  "column_break_wsoc",
-  "service",
-  "assign_by",
-  "contact",
-  "previous_executive",
-  "attended",
-  "executive_changed_date",
-  "section_break_ryjj",
-  "first_name",
-  "full_name",
-  "city",
+    "actions": [],
+    "autoname": "format:{first_name} {middle_name} {last_name}",
+    "creation": "2024-05-31 02:56:48.616324",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+     "inquiry_details_tab",
+     "status_section",
+     "executive",
+     "center",
+     "receptionist",
+     "distance",
+     "column_break_wsoc",
+     "service",
+     "assign_by",
+     "contact",
+     "previous_executive",
+     "attended",
+     "executive_changed_date",
+     "section_break_ryjj",
+     "first_name",
+     "full_name",
+     "city",
   "source",
   "dynamic_source_name",
   "imported_source",
-  "source_reference",
-  "source_youtube",
-  "youtuber_name",
-  "influencer_name",
-  "mode",
-  "created_on",
-  "column_break_nuev",
-  "middle_name",
-  "age",
-  "address",
-  "contact_number",
-  "profession",
-  "contact_number_copy",
-  "ad_name",
-  "campaign_name",
-  "ticket_number",
-  "message",
-  "column_break_eyir",
-  "last_name",
-  "email",
-  "alternative_number",
-  "alternative_number_copy",
-  "ht_sessions",
-  "section_break_cwdq",
-  "column_break_yyur",
-  "select_hair_loss_problem_type",
-  "hair_problem_hair_loss_check",
-  "remark_hair_loss",
-  "hair_problem_baldness_check",
-  "remark_baldness",
-  "hair_problem_handruff_check",
-  "remark_dandruff",
-  "current_treatment",
-  "treatment_type",
-  "treatment_type_other",
-  "consultation_type",
-  "column_break_uqho",
-  "scale_photo_demo_image",
-  "share_scalp_image",
-  "planning_time",
-  "family_history",
-  "section_break_rtux",
-  "hair_loss_type_image",
-  "select_current_level_of_baldness_hair_loss_stage",
-  "section_break_qinj",
-  "i",
-  "iii_vertex",
-  "vi",
-  "column_break_pelh",
-  "ii",
-  "iv",
-  "vii",
-  "column_break_halz",
-  "ii_a",
-  "iv_a",
-  "column_break_hiox",
-  "iii",
-  "v",
-  "column_break_hvqi",
-  "iii_a",
-  "v_a",
-  "doctors_input_tab",
-  "section_break_yulf",
-  "clinical_diagnosis",
-  "ht_eligible",
-  "ht_eligible_reason",
-  "column_break_crwr",
-  "trichoscopy_analysis",
-  "blood_test_advised",
-  "medical_treatment_plan_section",
-  "medicines_only",
-  "sessions_medicines_only",
-  "duration_medicines_only",
-  "interval_medicines_only",
-  "column_break_dnuv",
-  "prp_session_for_hair_regrowth",
-  "sessions_prp_session_for_hair_regrowth",
-  "duration_prp_session_for_hair_regrowth",
-  "interval_prp_session_for_hair_regrowth",
-  "column_break_qcxf",
-  "mesotherapy_for_hair_loss_control",
-  "sessions_mesotherapy_for_hair_loss_control",
-  "duration_mesotherapy_for_hair_loss_control",
-  "interval_mesotherapy_for_hair_loss_control",
-  "column_break_ernv",
-  "gfc_treatment",
-  "sessions_gfc_treatment",
-  "duration_gfc_treatment",
-  "interval_gfc_treatment",
-  "column_break_hutv",
-  "hair_transplant_procedure",
-  "sessions_hair_transplant_procedure",
-  "duration_hair_transplant_procedure",
-  "interval_hair_transplant_procedure",
-  "section_break_mbob",
-  "scarp_image",
-  "quality_of_skin",
-  "column_break_rlpv",
-  "implant_area_anlaysis",
-  "section_break_sjlw",
-  "quality_of_hair",
-  "quality_of_skin_donor",
-  "column_break_ryrn",
-  "donor_area_analysis",
-  "section_break_dfbk",
-  "grafts_required",
-  "ht_technique",
-  "date",
-  "column_break_vzfd",
-  "no_of_sessions",
-  "surgeon_incharge",
-  "per_graft_cost",
-  "costing_plan_section",
-  "cost",
-  "package_detail",
-  "column_break_hzmr",
-  "consultant_doctor",
-  "counselor_incharge",
-  "conversations_tab",
-  "html_udkp",
-  "reminders",
-  "column_break_tqty",
-  "status",
-  "conversations",
-  "connections_tab",
-  "lead_images_tab",
-  "lead_images_section",
-  "lead_images",
-  "whatsapp_tab",
-  "whatsapp_section",
-  "whatsapp_no"
- ],
- "fields": [
-  {
-   "fieldname": "age",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Age"
-  },
-  {
-   "default": "+91-",
-   "fieldname": "contact_number",
-   "fieldtype": "Phone",
-   "in_list_view": 1,
-   "label": "Contact Number",
-   "reqd": 1
-  },
-  {
-   "fieldname": "city",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "City",
-   "reqd": 1
-  },
-  {
-   "fieldname": "current_treatment",
-   "fieldtype": "Data",
-   "label": "Have you taken or currently taking any hair treatment? if yes share details here"
-  },
-  {
-   "fieldname": "treatment_type",
-   "fieldtype": "Select",
-   "label": "What treatment option you are interested in?",
-   "options": "\nHair loss medicines\nPRP / GFC therapy\nHair transplant\nOther"
-  },
-  {
-   "fieldname": "consultation_type",
-   "fieldtype": "Select",
-   "label": "What mode of consultation you like to have?",
-   "options": "\nOnline consultation\nIn clinic consultation"
-  },
-  {
-   "fieldname": "planning_time",
-   "fieldtype": "Select",
-   "label": "How soon you are planning to start hair treatment?",
-   "options": "\nWithin a week\nWithin a month\nNot decided yet"
-  },
-  {
-   "depends_on": "eval:doc.treatment_type == 'Other'",
-   "fieldname": "treatment_type_other",
-   "fieldtype": "Data",
-   "label": "Other",
-   "mandatory_depends_on": "eval:doc.treatment_type == 'Other'"
-  },
-  {
-   "fieldname": "share_scalp_image",
-   "fieldtype": "Attach Image",
-   "label": "Share top view scalp photo"
-  },
-  {
-   "fieldname": "scale_photo_demo_image",
-   "fieldtype": "HTML",
-   "label": "scale photo demo image",
-   "options": "<img src=\"/assets/frappe_hfhg/images/scale_photo_demo.jpeg\" alt=\"scale photo demo image\" style=\"margin-bottom:5px;\">"
-  },
-  {
-   "fieldname": "hair_loss_type_image",
-   "fieldtype": "HTML",
-   "label": "hair loss type image",
-   "options": "<img src=\"/assets/frappe_hfhg/images/hair_loss_type.jpg\" alt=\"hair loss type image\" style=\"margin-bottom:5px;\">"
-  },
-  {
-   "fieldname": "email",
-   "fieldtype": "Data",
-   "label": "Email"
-  },
-  {
-   "default": "0",
-   "fieldname": "hair_problem_hair_loss_check",
-   "fieldtype": "Check",
-   "label": "Hair loss / Active hairfall"
-  },
-  {
-   "default": "0",
-   "fieldname": "hair_problem_baldness_check",
-   "fieldtype": "Check",
-   "label": "Baldness / Hair thinning\t"
-  },
-  {
-   "default": "0",
-   "fieldname": "hair_problem_handruff_check",
-   "fieldtype": "Check",
-   "label": "Dandruff / Itching"
-  },
-  {
-   "fieldname": "select_hair_loss_problem_type",
-   "fieldtype": "HTML",
-   "label": "Select hair loss problem type",
-   "options": "<p style=\"margin-bottom:10px;\">Select hair loss problem type</p>"
-  },
-  {
-   "fieldname": "executive",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Executive",
-   "options": "Executive"
-  },
-  {
-   "fieldname": "inquiry_details_tab",
-   "fieldtype": "Tab Break",
-   "label": "Details"
-  },
-  {
-   "default": "New Lead",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "New Lead\nDuplicate Lead\nFake Lead\nInvalid Number\nNot Connected\nNot Interested\nCallback\nConnected\nCS Followup\nCS Lined Up\nHT CS Done\nBudget Issue\nCosting Done\nHairfall PT\nMedi/PRP\nBooked\nDate Given\nHT Postpone\nBHT Followup\nHT Done\nHT Not Possible\nAlopecia Case\nLoan/EMI\nBeard HT\n2nd session\nHT Prospect\nMedi/PRP FUP\nHT Done FUP\nBooked FUP\nAppointment Fix FUP\nClinic Visit FUP\ntest"
-  },
-  {
-   "fieldname": "service",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Service",
-   "options": "\nHair transplant\nBeard transplant\nHair fall\nAlopecia\nIHR\nSkin\nAesthetic"
-  },
-  {
-   "fieldname": "center",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Center",
-   "options": "Center"
-  },
-  {
-   "fieldname": "column_break_nuev",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_cwdq",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_yyur",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_uqho",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_wsoc",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "connections_tab",
-   "fieldtype": "Tab Break",
-   "label": "Connections",
-   "show_dashboard": 1
-  },
-  {
-   "fieldname": "first_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "First Name",
-   "reqd": 1
-  },
-  {
-   "fieldname": "middle_name",
-   "fieldtype": "Data",
-   "label": "Middle Name"
-  },
-  {
-   "fieldname": "last_name",
-   "fieldtype": "Data",
-   "label": "Last Name "
-  },
-  {
-   "fieldname": "source",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Source",
-   "options": "Source"
-  },
-  {
-   "fieldname": "dynamic_source_name",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Source Name"
-  },
-  {
-   "fieldname": "mode",
-   "fieldtype": "Select",
-   "label": "Mode",
-   "options": "\nCall\nWhatsapp\nWalkin\nWorkflow\nAfzal"
-  },
-  {
-   "depends_on": "eval:doc.source == 'Youtube'",
-   "fieldname": "source_youtube",
-   "fieldtype": "Data",
-   "label": "Youtube Channel"
-  },
-  {
-   "depends_on": "eval:doc.source == 'References'",
-   "fieldname": "source_reference",
-   "fieldtype": "Data",
-   "label": "Dr/Patient name"
-  },
-  {
-   "fieldname": "assign_by",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Assign By",
-   "options": "User"
-  },
-  {
-   "fieldname": "column_break_tqty",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "conversations_tab",
-   "fieldtype": "Tab Break",
-   "hidden": 1,
-   "label": "Conversations"
-  },
-  {
-   "fieldname": "reminders",
-   "fieldtype": "Table",
-   "label": "Reminders",
-   "options": "Reminders"
-  },
-  {
-   "fieldname": "conversations",
-   "fieldtype": "Table",
-   "label": "Conversations",
-   "options": "Conversation"
-  },
-  {
-   "fieldname": "section_break_ryjj",
-   "fieldtype": "Section Break",
-   "label": "Form"
-  },
-  {
-   "fieldname": "column_break_eyir",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "status_section",
-   "fieldtype": "Section Break",
-   "label": "Status"
-  },
-  {
-   "fieldname": "alternative_number",
-   "fieldtype": "Phone",
-   "label": "Alternative Number"
-  },
-  {
-   "default": "Today",
-   "fieldname": "created_on",
-   "fieldtype": "Date",
-   "in_filter": 1,
-   "in_list_view": 1,
-   "label": "Lead Created On",
-   "read_only": 1,
-   "reqd": 1
-  },
-  {
-   "fieldname": "contact_number_copy",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "in_global_search": 1,
-   "label": "Contact Number Copy"
-  },
-  {
-   "fieldname": "alternative_number_copy",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "in_global_search": 1,
-   "label": "Alternative Number Copy"
-  },
-  {
-   "fieldname": "full_name",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "in_global_search": 1,
-   "label": "Full Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "center.receptionist",
-   "fieldname": "receptionist",
-   "fieldtype": "Link",
-   "label": "Receptionist",
-   "options": "Receptionist",
-   "read_only": 1
-  },
-  {
-   "fieldname": "html_udkp",
-   "fieldtype": "HTML",
-   "options": "<p style=\"height:62px;\"></p>"
-  },
-  {
-   "fieldname": "campaign_name",
-   "fieldtype": "Data",
-   "label": "Campaign name"
-  },
-  {
-   "depends_on": "eval:doc.source == 'Youtuber'",
-   "fieldname": "youtuber_name",
-   "fieldtype": "Data",
-   "label": "Youtuber Name"
-  },
-  {
-   "fieldname": "section_break_yulf",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "ht_eligible",
-   "fieldtype": "Select",
-   "label": "HT Eligible",
-   "options": "\nEligible\nNot Eligible"
-  },
-  {
-   "fieldname": "doctors_input_tab",
-   "fieldtype": "Tab Break",
-   "label": "Doctor's Input"
-  },
-  {
-   "depends_on": "eval: doc.ht_eligible == \"Not Eligible\"",
-   "fieldname": "ht_eligible_reason",
-   "fieldtype": "Data",
-   "label": "Reason"
-  },
-  {
-   "fieldname": "select_current_level_of_baldness_hair_loss_stage",
-   "fieldtype": "HTML",
-   "label": "Select current level of baldness/ hair loss stage",
-   "options": "<p style=\"margin-bottom:10px;\">Select current level of baldness/ hair loss stage</p>"
-  },
-  {
-   "default": "0",
-   "fieldname": "i",
-   "fieldtype": "Check",
-   "label": "I"
-  },
-  {
-   "default": "0",
-   "fieldname": "ii",
-   "fieldtype": "Check",
-   "label": "II"
-  },
-  {
-   "default": "0",
-   "fieldname": "ii_a",
-   "fieldtype": "Check",
-   "label": "II A"
-  },
-  {
-   "default": "0",
-   "fieldname": "iii",
-   "fieldtype": "Check",
-   "label": "III"
-  },
-  {
-   "default": "0",
-   "fieldname": "vi",
-   "fieldtype": "Check",
-   "label": "VI"
-  },
-  {
-   "default": "0",
-   "fieldname": "iii_a",
-   "fieldtype": "Check",
-   "label": "III A"
-  },
-  {
-   "default": "0",
-   "fieldname": "iii_vertex",
-   "fieldtype": "Check",
-   "label": "III Vertex"
-  },
-  {
-   "default": "0",
-   "fieldname": "iv",
-   "fieldtype": "Check",
-   "label": "IV"
-  },
-  {
-   "default": "0",
-   "fieldname": "iv_a",
-   "fieldtype": "Check",
-   "label": "IV A"
-  },
-  {
-   "default": "0",
-   "fieldname": "v",
-   "fieldtype": "Check",
-   "label": "V"
-  },
-  {
-   "default": "0",
-   "fieldname": "v_a",
-   "fieldtype": "Check",
-   "label": "V A"
-  },
-  {
-   "default": "0",
-   "fieldname": "vii",
-   "fieldtype": "Check",
-   "label": "VII"
-  },
-  {
-   "fieldname": "section_break_qinj",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_pelh",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_halz",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_hiox",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_hvqi",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_rtux",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_crwr",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "clinical_diagnosis",
-   "fieldtype": "Data",
-   "label": "Clinical Diagnosis"
-  },
-  {
-   "fieldname": "trichoscopy_analysis",
-   "fieldtype": "Data",
-   "label": "Trichoscopy Analysis"
-  },
-  {
-   "fieldname": "blood_test_advised",
-   "fieldtype": "Data",
-   "label": "Blood Test Advised"
-  },
-  {
-   "fieldname": "cost",
-   "fieldtype": "Data",
-   "label": "Approx. Cost of Hair Transplant(+18%GST not included)"
-  },
-  {
-   "fieldname": "package_detail",
-   "fieldtype": "Data",
-   "label": "Package Detail"
-  },
-  {
-   "fieldname": "counselor_incharge",
-   "fieldtype": "Data",
-   "label": "Counselor Incharge"
-  },
-  {
-   "fieldname": "consultant_doctor",
-   "fieldtype": "Link",
-   "label": "Consultant Doctor",
-   "options": "Doctor"
-  },
-  {
-   "fieldname": "section_break_dfbk",
-   "fieldtype": "Section Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "grafts_required",
-   "fieldtype": "Int",
-   "label": "Grafts Required",
-   "read_only": 1
-  },
-  {
-   "fieldname": "ht_technique",
-   "fieldtype": "Select",
-   "label": "HT Technique",
-   "options": "FUE\nB-FUE\nI-FUE\nBig-FUE\nDHI"
-  },
-  {
-   "fieldname": "column_break_vzfd",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "date",
-   "fieldtype": "Date",
-   "label": "Date"
-  },
-  {
-   "fieldname": "no_of_sessions",
-   "fieldtype": "Int",
-   "label": "No. of Sessions"
-  },
-  {
-   "fieldname": "surgeon_incharge",
-   "fieldtype": "Link",
-   "label": "Surgeon Incharge",
-   "options": "Doctor"
-  },
-  {
-   "fieldname": "per_graft_cost",
-   "fieldtype": "Int",
-   "label": "Per Graft Cost"
-  },
-  {
-   "fieldname": "medical_treatment_plan_section",
-   "fieldtype": "Section Break",
-   "label": "Medical Treatment Plan"
-  },
-  {
-   "default": "0",
-   "fieldname": "medicines_only",
-   "fieldtype": "Check",
-   "label": "Medicines Only"
-  },
-  {
-   "fieldname": "column_break_dnuv",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_qcxf",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_ernv",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "prp_session_for_hair_regrowth",
-   "fieldtype": "Check",
-   "label": "PRP Session For Hair Regrowth"
-  },
-  {
-   "default": "0",
-   "fieldname": "mesotherapy_for_hair_loss_control",
-   "fieldtype": "Check",
-   "label": "Mesotherapy For Hair Loss Control"
-  },
-  {
-   "default": "0",
-   "fieldname": "gfc_treatment",
-   "fieldtype": "Check",
-   "label": "GFC Treatment"
-  },
-  {
-   "default": "0",
-   "fieldname": "hair_transplant_procedure",
-   "fieldtype": "Check",
-   "label": "Hair Transplant Procedure"
-  },
-  {
-   "depends_on": "eval: doc.medicines_only",
-   "fieldname": "sessions_medicines_only",
-   "fieldtype": "Data",
-   "label": "Sessions"
-  },
-  {
-   "depends_on": "eval: doc.medicines_only",
-   "fieldname": "duration_medicines_only",
-   "fieldtype": "Data",
-   "label": "Duration"
-  },
-  {
-   "depends_on": "eval: doc.medicines_only",
-   "fieldname": "interval_medicines_only",
-   "fieldtype": "Data",
-   "label": "Interval"
-  },
-  {
-   "fieldname": "column_break_hutv",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval: doc.prp_session_for_hair_regrowth",
-   "fieldname": "sessions_prp_session_for_hair_regrowth",
-   "fieldtype": "Data",
-   "label": "Sessions"
-  },
-  {
-   "depends_on": "eval: doc.prp_session_for_hair_regrowth",
-   "fieldname": "duration_prp_session_for_hair_regrowth",
-   "fieldtype": "Data",
-   "label": "Duration"
-  },
-  {
-   "depends_on": "eval: doc.prp_session_for_hair_regrowth",
-   "fieldname": "interval_prp_session_for_hair_regrowth",
-   "fieldtype": "Data",
-   "label": "Interval"
-  },
-  {
-   "depends_on": "eval: doc.mesotherapy_for_hair_loss_control",
-   "fieldname": "sessions_mesotherapy_for_hair_loss_control",
-   "fieldtype": "Data",
-   "label": "Sessions"
-  },
-  {
-   "depends_on": "eval: doc.mesotherapy_for_hair_loss_control",
-   "fieldname": "duration_mesotherapy_for_hair_loss_control",
-   "fieldtype": "Data",
-   "label": "Duration"
-  },
-  {
-   "depends_on": "eval: doc.mesotherapy_for_hair_loss_control",
-   "fieldname": "interval_mesotherapy_for_hair_loss_control",
-   "fieldtype": "Data",
-   "label": "Interval"
-  },
-  {
-   "depends_on": "eval: doc.gfc_treatment",
-   "fieldname": "sessions_gfc_treatment",
-   "fieldtype": "Data",
-   "label": "Sessions"
-  },
-  {
-   "depends_on": "eval: doc.gfc_treatment",
-   "fieldname": "duration_gfc_treatment",
-   "fieldtype": "Data",
-   "label": "Duration"
-  },
-  {
-   "depends_on": "eval: doc.gfc_treatment",
-   "fieldname": "interval_gfc_treatment",
-   "fieldtype": "Data",
-   "label": "Interval"
-  },
-  {
-   "depends_on": "eval: doc.hair_transplant_procedure",
-   "fieldname": "duration_hair_transplant_procedure",
-   "fieldtype": "Data",
-   "label": "Duration"
-  },
-  {
-   "depends_on": "eval: doc.hair_transplant_procedure",
-   "fieldname": "sessions_hair_transplant_procedure",
-   "fieldtype": "Data",
-   "label": "Sessions"
-  },
-  {
-   "depends_on": "eval: doc.hair_transplant_procedure",
-   "fieldname": "interval_hair_transplant_procedure",
-   "fieldtype": "Data",
-   "label": "Interval"
-  },
-  {
-   "fieldname": "ht_sessions",
-   "fieldtype": "Select",
-   "label": "HT Sessions",
-   "options": "Session 1\nSession 2\nSession 3\nSession 4\nSession 5"
-  },
-  {
-   "fieldname": "contact",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Contact",
-   "options": "Contacts"
-  },
-  {
-   "fieldname": "costing_plan_section",
-   "fieldtype": "Section Break",
-   "label": "Costing Plan"
-  },
-  {
-   "fieldname": "column_break_hzmr",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "scarp_image",
-   "fieldtype": "HTML",
-   "label": "scarp_image",
-   "options": "<img src=\"/assets/frappe_hfhg/images/hairline-marking.jpg\" alt=\"scale photo demo image\" style=\"margin-bottom:5px;\">"
-  },
-  {
-   "fieldname": "implant_area_anlaysis",
-   "fieldtype": "Table",
-   "label": "Implant Area Anlaysis",
-   "options": "Implant Area Table"
-  },
-  {
-   "fieldname": "section_break_mbob",
-   "fieldtype": "Section Break",
-   "label": "Hair Transplant Plan"
-  },
-  {
-   "fieldname": "column_break_rlpv",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "quality_of_skin",
-   "fieldtype": "Data",
-   "label": "Quality of Skin"
-  },
-  {
-   "fieldname": "section_break_sjlw",
-   "fieldtype": "Section Break",
-   "hide_border": 1
-  },
-  {
-   "fieldname": "quality_of_hair",
-   "fieldtype": "Data",
-   "label": "Quality of Hair"
-  },
-  {
-   "fieldname": "column_break_ryrn",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "quality_of_skin_donor",
-   "fieldtype": "Data",
-   "label": "Quality of Skin"
-  },
-  {
-   "fieldname": "donor_area_analysis",
-   "fieldtype": "Table",
-   "label": "Donor Area Analysis",
-   "options": "Doner Area Table"
-  },
-  {
-   "fieldname": "message",
-   "fieldtype": "Long Text",
-   "label": "Webform Message"
-  },
-  {
-   "fieldname": "address",
-   "fieldtype": "Data",
-   "label": "Address"
-  },
-  {
-   "fieldname": "ticket_number",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "ticket_number",
-   "read_only": 1
-  },
-  {
-   "fieldname": "distance",
-   "fieldtype": "Select",
-   "label": "Distance",
-   "options": "\nNear\nFar"
-  },
-  {
-   "fieldname": "imported_source",
-   "fieldtype": "Data",
-   "label": "Imported Source",
-   "read_only": 1
-  },
-  {
-   "default": "No",
-   "depends_on": "eval: doc.status == \"Duplicate Lead\"",
-   "fieldname": "attended",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Attended",
-   "options": "Yes\nNo"
-  },
-  {
-   "fieldname": "previous_executive",
-   "fieldtype": "Link",
-   "label": "Previous Executive",
-   "options": "Executive",
-   "read_only": 1
-  },
-  {
-   "fieldname": "executive_changed_date",
-   "fieldtype": "Date",
-   "label": "Executive Changed Date",
-   "read_only": 1
-  },
-  {
-   "fieldname": "lead_images_tab",
-   "fieldtype": "Tab Break",
-   "label": "Lead Images"
-  },
-  {
-   "fieldname": "lead_images_section",
-   "fieldtype": "Section Break",
-   "label": "Lead Images"
-  },
-  {
-   "fieldname": "lead_images",
-   "fieldtype": "Table",
-   "label": "Lead Images",
-   "options": "Lead Image"
-  },
-  {
-   "fieldname": "whatsapp_tab",
-   "fieldtype": "Tab Break",
-   "label": "Whatsapp"
-  },
-  {
-   "fieldname": "whatsapp_section",
-   "fieldtype": "Section Break",
-   "label": "Whatsapp"
-  },
-  {
-   "fieldname": "profession",
-   "fieldtype": "Data",
-   "label": "Profession"
-  },
-  {
-   "fieldname": "ad_name",
-   "fieldtype": "Link",
-   "label": "Ad name",
-   "options": "Meta Ads"
-  },
-  {
-   "fieldname": "whatsapp_no",
-   "fieldtype": "Data",
-   "label": "Whatsapp No"
-  },
-  {
-   "fieldname": "remark_hair_loss",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Since From (Hair loss / Active hairfall)"
-  },
-  {
-   "fieldname": "remark_baldness",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Since From (Baldness / Hair thinning)"
-  },
-  {
-   "fieldname": "remark_dandruff",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Since From (Dandruff / Itching)"
-  },
-  {
-   "fieldname": "family_history",
-   "fieldtype": "Select",
-   "label": "Family History",
-   "options": "\nMaternal side\nPaternal side\nBoth"
-  },
-  {
-   "depends_on": "eval:doc.source == 'Influencer'",
-   "fieldname": "influencer_name",
-   "fieldtype": "Data",
-   "label": "Influencer Name"
-  }
- ],
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-09-16 21:20:20.115317",
- "modified_by": "Administrator",
- "module": "Frappe Hfhg",
- "name": "Lead",
- "naming_rule": "Expression",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
- "quick_entry": 1,
- "row_format": "Dynamic",
- "search_fields": "status",
- "show_name_in_global_search": 1,
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": [],
- "track_changes": 1
-}
+     "source_reference",
+     "source_youtube",
+     "youtuber_name",
+     "influencer_name",
+     "mode",
+     "created_on",
+     "column_break_nuev",
+     "middle_name",
+     "age",
+     "address",
+     "contact_number",
+     "profession",
+     "contact_number_copy",
+     "ad_name",
+     "campaign_name",
+     "ticket_number",
+     "message",
+     "column_break_eyir",
+     "last_name",
+     "email",
+     "alternative_number",
+     "alternative_number_copy",
+     "ht_sessions",
+     "section_break_cwdq",
+     "column_break_yyur",
+     "select_hair_loss_problem_type",
+     "hair_problem_hair_loss_check",
+     "remark_hair_loss",
+     "hair_problem_baldness_check",
+     "remark_baldness",
+     "hair_problem_handruff_check",
+     "remark_dandruff",
+     "current_treatment",
+     "treatment_type",
+     "treatment_type_other",
+     "consultation_type",
+     "column_break_uqho",
+     "scale_photo_demo_image",
+     "share_scalp_image",
+     "planning_time",
+     "family_history",
+     "section_break_rtux",
+     "hair_loss_type_image",
+     "select_current_level_of_baldness_hair_loss_stage",
+     "section_break_qinj",
+     "i",
+     "iii_vertex",
+     "vi",
+     "column_break_pelh",
+     "ii",
+     "iv",
+     "vii",
+     "column_break_halz",
+     "ii_a",
+     "iv_a",
+     "column_break_hiox",
+     "iii",
+     "v",
+     "column_break_hvqi",
+     "iii_a",
+     "v_a",
+     "doctors_input_tab",
+     "section_break_yulf",
+     "clinical_diagnosis",
+     "ht_eligible",
+     "ht_eligible_reason",
+     "column_break_crwr",
+     "trichoscopy_analysis",
+     "blood_test_advised",
+     "medical_treatment_plan_section",
+     "medicines_only",
+     "sessions_medicines_only",
+     "duration_medicines_only",
+     "interval_medicines_only",
+     "column_break_dnuv",
+     "prp_session_for_hair_regrowth",
+     "sessions_prp_session_for_hair_regrowth",
+     "duration_prp_session_for_hair_regrowth",
+     "interval_prp_session_for_hair_regrowth",
+     "column_break_qcxf",
+     "mesotherapy_for_hair_loss_control",
+     "sessions_mesotherapy_for_hair_loss_control",
+     "duration_mesotherapy_for_hair_loss_control",
+     "interval_mesotherapy_for_hair_loss_control",
+     "column_break_ernv",
+     "gfc_treatment",
+     "sessions_gfc_treatment",
+     "duration_gfc_treatment",
+     "interval_gfc_treatment",
+     "column_break_hutv",
+     "hair_transplant_procedure",
+     "sessions_hair_transplant_procedure",
+     "duration_hair_transplant_procedure",
+     "interval_hair_transplant_procedure",
+     "section_break_mbob",
+     "scarp_image",
+     "quality_of_skin",
+     "column_break_rlpv",
+     "implant_area_anlaysis",
+     "section_break_sjlw",
+     "quality_of_hair",
+     "quality_of_skin_donor",
+     "column_break_ryrn",
+     "donor_area_analysis",
+     "section_break_dfbk",
+     "grafts_required",
+     "ht_technique",
+     "date",
+     "column_break_vzfd",
+     "no_of_sessions",
+     "surgeon_incharge",
+     "per_graft_cost",
+     "costing_plan_section",
+     "cost",
+     "package_detail",
+     "column_break_hzmr",
+     "consultant_doctor",
+     "counselor_incharge",
+     "conversations_tab",
+     "html_udkp",
+     "reminders",
+     "column_break_tqty",
+     "status",
+     "conversations",
+     "connections_tab",
+     "lead_images_tab",
+     "lead_images_section",
+     "lead_images",
+     "whatsapp_tab",
+     "whatsapp_section",
+     "whatsapp_no"
+    ],
+    "fields": [
+     {
+      "fieldname": "age",
+      "fieldtype": "Int",
+      "in_list_view": 1,
+      "label": "Age"
+     },
+     {
+      "default": "+91-",
+      "fieldname": "contact_number",
+      "fieldtype": "Phone",
+      "in_list_view": 1,
+      "label": "Contact Number",
+      "reqd": 1
+     },
+     {
+      "fieldname": "city",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "City",
+      "reqd": 1
+     },
+     {
+      "fieldname": "current_treatment",
+      "fieldtype": "Data",
+      "label": "Have you taken or currently taking any hair treatment? if yes share details here"
+     },
+     {
+      "fieldname": "treatment_type",
+      "fieldtype": "Select",
+      "label": "What treatment option you are interested in?",
+      "options": "\nHair loss medicines\nPRP / GFC therapy\nHair transplant\nOther"
+     },
+     {
+      "fieldname": "consultation_type",
+      "fieldtype": "Select",
+      "label": "What mode of consultation you like to have?",
+      "options": "\nOnline consultation\nIn clinic consultation"
+     },
+     {
+      "fieldname": "planning_time",
+      "fieldtype": "Select",
+      "label": "How soon you are planning to start hair treatment?",
+      "options": "\nWithin a week\nWithin a month\nNot decided yet"
+     },
+     {
+      "depends_on": "eval:doc.treatment_type == 'Other'",
+      "fieldname": "treatment_type_other",
+      "fieldtype": "Data",
+      "label": "Other",
+      "mandatory_depends_on": "eval:doc.treatment_type == 'Other'"
+     },
+     {
+      "fieldname": "share_scalp_image",
+      "fieldtype": "Attach Image",
+      "label": "Share top view scalp photo"
+     },
+     {
+      "fieldname": "scale_photo_demo_image",
+      "fieldtype": "HTML",
+      "label": "scale photo demo image",
+      "options": "<img src=\"/assets/frappe_hfhg/images/scale_photo_demo.jpeg\" alt=\"scale photo demo image\" style=\"margin-bottom:5px;\">"
+     },
+     {
+      "fieldname": "hair_loss_type_image",
+      "fieldtype": "HTML",
+      "label": "hair loss type image",
+      "options": "<img src=\"/assets/frappe_hfhg/images/hair_loss_type.jpg\" alt=\"hair loss type image\" style=\"margin-bottom:5px;\">"
+     },
+     {
+      "fieldname": "email",
+      "fieldtype": "Data",
+      "label": "Email"
+     },
+     {
+      "default": "0",
+      "fieldname": "hair_problem_hair_loss_check",
+      "fieldtype": "Check",
+      "label": "Hair loss / Active hairfall"
+     },
+     {
+      "default": "0",
+      "fieldname": "hair_problem_baldness_check",
+      "fieldtype": "Check",
+      "label": "Baldness / Hair thinning\t"
+     },
+     {
+      "default": "0",
+      "fieldname": "hair_problem_handruff_check",
+      "fieldtype": "Check",
+      "label": "Dandruff / Itching"
+     },
+     {
+      "fieldname": "select_hair_loss_problem_type",
+      "fieldtype": "HTML",
+      "label": "Select hair loss problem type",
+      "options": "<p style=\"margin-bottom:10px;\">Select hair loss problem type</p>"
+     },
+     {
+      "fieldname": "executive",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Executive",
+      "options": "Executive"
+     },
+     {
+      "fieldname": "inquiry_details_tab",
+      "fieldtype": "Tab Break",
+      "label": "Details"
+     },
+     {
+      "default": "New Lead",
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Status",
+      "options": "New Lead\nDuplicate Lead\nFake Lead\nInvalid Number\nNot Connected\nNot Interested\nCallback\nConnected\nCS Followup\nCS Lined Up\nHT CS Done\nBudget Issue\nCosting Done\nHairfall PT\nMedi/PRP\nBooked\nDate Given\nHT Postpone\nBHT Followup\nHT Done\nHT Not Possible\nAlopecia Case\nLoan/EMI\nBeard HT\n2nd session\nHT Prospect\nMedi/PRP FUP\nHT Done FUP\nBooked FUP\nAppointment Fix FUP\nClinic Visit FUP\ntest"
+     },
+     {
+      "fieldname": "service",
+      "fieldtype": "Select",
+      "hidden": 1,
+      "label": "Service",
+      "options": "\nHair transplant\nBeard transplant\nHair fall\nAlopecia\nIHR\nSkin\nAesthetic"
+     },
+     {
+      "fieldname": "center",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Center",
+      "options": "Center"
+     },
+     {
+      "fieldname": "column_break_nuev",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "section_break_cwdq",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "column_break_yyur",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_uqho",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_wsoc",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "connections_tab",
+      "fieldtype": "Tab Break",
+      "label": "Connections",
+      "show_dashboard": 1
+     },
+     {
+      "fieldname": "first_name",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "First Name",
+      "reqd": 1
+     },
+     {
+      "fieldname": "middle_name",
+      "fieldtype": "Data",
+      "label": "Middle Name"
+     },
+     {
+      "fieldname": "last_name",
+      "fieldtype": "Data",
+      "label": "Last Name "
+     },
+     {
+      "fieldname": "source",
+      "fieldtype": "Link",
+      "in_standard_filter": 1,
+      "label": "Source",
+      "options": "Source"
+     },
+     {
+      "fieldname": "dynamic_source_name",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Source Name"
+     },
+     {
+      "fieldname": "mode",
+      "fieldtype": "Select",
+      "label": "Mode",
+      "options": "\nCall\nWhatsapp\nWalkin\nWorkflow\nAfzal"
+     },
+     {
+      "depends_on": "eval:doc.source == 'Youtube'",
+      "fieldname": "source_youtube",
+      "fieldtype": "Data",
+      "label": "Youtube Channel"
+     },
+     {
+      "depends_on": "eval:doc.source == 'References'",
+      "fieldname": "source_reference",
+      "fieldtype": "Data",
+      "label": "Dr/Patient name"
+     },
+     {
+      "fieldname": "assign_by",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Assign By",
+      "options": "User"
+     },
+     {
+      "fieldname": "column_break_tqty",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "conversations_tab",
+      "fieldtype": "Tab Break",
+      "hidden": 1,
+      "label": "Conversations"
+     },
+     {
+      "fieldname": "reminders",
+      "fieldtype": "Table",
+      "label": "Reminders",
+      "options": "Reminders"
+     },
+     {
+      "fieldname": "conversations",
+      "fieldtype": "Table",
+      "label": "Conversations",
+      "options": "Conversation"
+     },
+     {
+      "fieldname": "section_break_ryjj",
+      "fieldtype": "Section Break",
+      "label": "Form"
+     },
+     {
+      "fieldname": "column_break_eyir",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "status_section",
+      "fieldtype": "Section Break",
+      "label": "Status"
+     },
+     {
+      "fieldname": "alternative_number",
+      "fieldtype": "Phone",
+      "label": "Alternative Number"
+     },
+     {
+      "default": "Today",
+      "fieldname": "created_on",
+      "fieldtype": "Date",
+      "in_filter": 1,
+      "in_list_view": 1,
+      "label": "Lead Created On",
+      "read_only": 1,
+      "reqd": 1
+     },
+     {
+      "fieldname": "contact_number_copy",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "in_global_search": 1,
+      "label": "Contact Number Copy"
+     },
+     {
+      "fieldname": "alternative_number_copy",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "in_global_search": 1,
+      "label": "Alternative Number Copy"
+     },
+     {
+      "fieldname": "full_name",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "in_global_search": 1,
+      "label": "Full Name",
+      "read_only": 1
+     },
+     {
+      "fetch_from": "center.receptionist",
+      "fieldname": "receptionist",
+      "fieldtype": "Link",
+      "label": "Receptionist",
+      "options": "Receptionist",
+      "read_only": 1
+     },
+     {
+      "fieldname": "html_udkp",
+      "fieldtype": "HTML",
+      "options": "<p style=\"height:62px;\"></p>"
+     },
+     {
+      "fieldname": "campaign_name",
+      "fieldtype": "Data",
+      "label": "Campaign name"
+     },
+     {
+      "depends_on": "eval:doc.source == 'Youtuber'",
+      "fieldname": "youtuber_name",
+      "fieldtype": "Data",
+      "label": "Youtuber Name"
+     },
+     {
+      "fieldname": "section_break_yulf",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "ht_eligible",
+      "fieldtype": "Select",
+      "label": "HT Eligible",
+      "options": "\nEligible\nNot Eligible"
+     },
+     {
+      "fieldname": "doctors_input_tab",
+      "fieldtype": "Tab Break",
+      "label": "Doctor's Input"
+     },
+     {
+      "depends_on": "eval: doc.ht_eligible == \"Not Eligible\"",
+      "fieldname": "ht_eligible_reason",
+      "fieldtype": "Data",
+      "label": "Reason"
+     },
+     {
+      "fieldname": "select_current_level_of_baldness_hair_loss_stage",
+      "fieldtype": "HTML",
+      "label": "Select current level of baldness/ hair loss stage",
+      "options": "<p style=\"margin-bottom:10px;\">Select current level of baldness/ hair loss stage</p>"
+     },
+     {
+      "default": "0",
+      "fieldname": "i",
+      "fieldtype": "Check",
+      "label": "I"
+     },
+     {
+      "default": "0",
+      "fieldname": "ii",
+      "fieldtype": "Check",
+      "label": "II"
+     },
+     {
+      "default": "0",
+      "fieldname": "ii_a",
+      "fieldtype": "Check",
+      "label": "II A"
+     },
+     {
+      "default": "0",
+      "fieldname": "iii",
+      "fieldtype": "Check",
+      "label": "III"
+     },
+     {
+      "default": "0",
+      "fieldname": "vi",
+      "fieldtype": "Check",
+      "label": "VI"
+     },
+     {
+      "default": "0",
+      "fieldname": "iii_a",
+      "fieldtype": "Check",
+      "label": "III A"
+     },
+     {
+      "default": "0",
+      "fieldname": "iii_vertex",
+      "fieldtype": "Check",
+      "label": "III Vertex"
+     },
+     {
+      "default": "0",
+      "fieldname": "iv",
+      "fieldtype": "Check",
+      "label": "IV"
+     },
+     {
+      "default": "0",
+      "fieldname": "iv_a",
+      "fieldtype": "Check",
+      "label": "IV A"
+     },
+     {
+      "default": "0",
+      "fieldname": "v",
+      "fieldtype": "Check",
+      "label": "V"
+     },
+     {
+      "default": "0",
+      "fieldname": "v_a",
+      "fieldtype": "Check",
+      "label": "V A"
+     },
+     {
+      "default": "0",
+      "fieldname": "vii",
+      "fieldtype": "Check",
+      "label": "VII"
+     },
+     {
+      "fieldname": "section_break_qinj",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "column_break_pelh",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_halz",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_hiox",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_hvqi",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "section_break_rtux",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "column_break_crwr",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "clinical_diagnosis",
+      "fieldtype": "Data",
+      "label": "Clinical Diagnosis"
+     },
+     {
+      "fieldname": "trichoscopy_analysis",
+      "fieldtype": "Data",
+      "label": "Trichoscopy Analysis"
+     },
+     {
+      "fieldname": "blood_test_advised",
+      "fieldtype": "Data",
+      "label": "Blood Test Advised"
+     },
+     {
+      "fieldname": "cost",
+      "fieldtype": "Data",
+      "label": "Approx. Cost of Hair Transplant(+18%GST not included)"
+     },
+     {
+      "fieldname": "package_detail",
+      "fieldtype": "Data",
+      "label": "Package Detail"
+     },
+     {
+      "fieldname": "counselor_incharge",
+      "fieldtype": "Data",
+      "label": "Counselor Incharge"
+     },
+     {
+      "fieldname": "consultant_doctor",
+      "fieldtype": "Link",
+      "label": "Consultant Doctor",
+      "options": "Doctor"
+     },
+     {
+      "fieldname": "section_break_dfbk",
+      "fieldtype": "Section Break"
+     },
+     {
+      "default": "0",
+      "fieldname": "grafts_required",
+      "fieldtype": "Int",
+      "label": "Grafts Required",
+      "read_only": 1
+     },
+     {
+      "fieldname": "ht_technique",
+      "fieldtype": "Select",
+      "label": "HT Technique",
+      "options": "FUE\nB-FUE\nI-FUE\nBig-FUE\nDHI"
+     },
+     {
+      "fieldname": "column_break_vzfd",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "date",
+      "fieldtype": "Date",
+      "label": "Date"
+     },
+     {
+      "fieldname": "no_of_sessions",
+      "fieldtype": "Int",
+      "label": "No. of Sessions"
+     },
+     {
+      "fieldname": "surgeon_incharge",
+      "fieldtype": "Link",
+      "label": "Surgeon Incharge",
+      "options": "Doctor"
+     },
+     {
+      "fieldname": "per_graft_cost",
+      "fieldtype": "Int",
+      "label": "Per Graft Cost"
+     },
+     {
+      "fieldname": "medical_treatment_plan_section",
+      "fieldtype": "Section Break",
+      "label": "Medical Treatment Plan"
+     },
+     {
+      "default": "0",
+      "fieldname": "medicines_only",
+      "fieldtype": "Check",
+      "label": "Medicines Only"
+     },
+     {
+      "fieldname": "column_break_dnuv",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_qcxf",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_ernv",
+      "fieldtype": "Column Break"
+     },
+     {
+      "default": "0",
+      "fieldname": "prp_session_for_hair_regrowth",
+      "fieldtype": "Check",
+      "label": "PRP Session For Hair Regrowth"
+     },
+     {
+      "default": "0",
+      "fieldname": "mesotherapy_for_hair_loss_control",
+      "fieldtype": "Check",
+      "label": "Mesotherapy For Hair Loss Control"
+     },
+     {
+      "default": "0",
+      "fieldname": "gfc_treatment",
+      "fieldtype": "Check",
+      "label": "GFC Treatment"
+     },
+     {
+      "default": "0",
+      "fieldname": "hair_transplant_procedure",
+      "fieldtype": "Check",
+      "label": "Hair Transplant Procedure"
+     },
+     {
+      "depends_on": "eval: doc.medicines_only",
+      "fieldname": "sessions_medicines_only",
+      "fieldtype": "Data",
+      "label": "Sessions"
+     },
+     {
+      "depends_on": "eval: doc.medicines_only",
+      "fieldname": "duration_medicines_only",
+      "fieldtype": "Data",
+      "label": "Duration"
+     },
+     {
+      "depends_on": "eval: doc.medicines_only",
+      "fieldname": "interval_medicines_only",
+      "fieldtype": "Data",
+      "label": "Interval"
+     },
+     {
+      "fieldname": "column_break_hutv",
+      "fieldtype": "Column Break"
+     },
+     {
+      "depends_on": "eval: doc.prp_session_for_hair_regrowth",
+      "fieldname": "sessions_prp_session_for_hair_regrowth",
+      "fieldtype": "Data",
+      "label": "Sessions"
+     },
+     {
+      "depends_on": "eval: doc.prp_session_for_hair_regrowth",
+      "fieldname": "duration_prp_session_for_hair_regrowth",
+      "fieldtype": "Data",
+      "label": "Duration"
+     },
+     {
+      "depends_on": "eval: doc.prp_session_for_hair_regrowth",
+      "fieldname": "interval_prp_session_for_hair_regrowth",
+      "fieldtype": "Data",
+      "label": "Interval"
+     },
+     {
+      "depends_on": "eval: doc.mesotherapy_for_hair_loss_control",
+      "fieldname": "sessions_mesotherapy_for_hair_loss_control",
+      "fieldtype": "Data",
+      "label": "Sessions"
+     },
+     {
+      "depends_on": "eval: doc.mesotherapy_for_hair_loss_control",
+      "fieldname": "duration_mesotherapy_for_hair_loss_control",
+      "fieldtype": "Data",
+      "label": "Duration"
+     },
+     {
+      "depends_on": "eval: doc.mesotherapy_for_hair_loss_control",
+      "fieldname": "interval_mesotherapy_for_hair_loss_control",
+      "fieldtype": "Data",
+      "label": "Interval"
+     },
+     {
+      "depends_on": "eval: doc.gfc_treatment",
+      "fieldname": "sessions_gfc_treatment",
+      "fieldtype": "Data",
+      "label": "Sessions"
+     },
+     {
+      "depends_on": "eval: doc.gfc_treatment",
+      "fieldname": "duration_gfc_treatment",
+      "fieldtype": "Data",
+      "label": "Duration"
+     },
+     {
+      "depends_on": "eval: doc.gfc_treatment",
+      "fieldname": "interval_gfc_treatment",
+      "fieldtype": "Data",
+      "label": "Interval"
+     },
+     {
+      "depends_on": "eval: doc.hair_transplant_procedure",
+      "fieldname": "duration_hair_transplant_procedure",
+      "fieldtype": "Data",
+      "label": "Duration"
+     },
+     {
+      "depends_on": "eval: doc.hair_transplant_procedure",
+      "fieldname": "sessions_hair_transplant_procedure",
+      "fieldtype": "Data",
+      "label": "Sessions"
+     },
+     {
+      "depends_on": "eval: doc.hair_transplant_procedure",
+      "fieldname": "interval_hair_transplant_procedure",
+      "fieldtype": "Data",
+      "label": "Interval"
+     },
+     {
+      "fieldname": "ht_sessions",
+      "fieldtype": "Select",
+      "label": "HT Sessions",
+      "options": "Session 1\nSession 2\nSession 3\nSession 4\nSession 5"
+     },
+     {
+      "fieldname": "contact",
+      "fieldtype": "Link",
+      "hidden": 1,
+      "label": "Contact",
+      "options": "Contacts"
+     },
+     {
+      "fieldname": "costing_plan_section",
+      "fieldtype": "Section Break",
+      "label": "Costing Plan"
+     },
+     {
+      "fieldname": "column_break_hzmr",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "scarp_image",
+      "fieldtype": "HTML",
+      "label": "scarp_image",
+      "options": "<img src=\"/assets/frappe_hfhg/images/hairline-marking.jpg\" alt=\"scale photo demo image\" style=\"margin-bottom:5px;\">"
+     },
+     {
+      "fieldname": "implant_area_anlaysis",
+      "fieldtype": "Table",
+      "label": "Implant Area Anlaysis",
+      "options": "Implant Area Table"
+     },
+     {
+      "fieldname": "section_break_mbob",
+      "fieldtype": "Section Break",
+      "label": "Hair Transplant Plan"
+     },
+     {
+      "fieldname": "column_break_rlpv",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "quality_of_skin",
+      "fieldtype": "Data",
+      "label": "Quality of Skin"
+     },
+     {
+      "fieldname": "section_break_sjlw",
+      "fieldtype": "Section Break",
+      "hide_border": 1
+     },
+     {
+      "fieldname": "quality_of_hair",
+      "fieldtype": "Data",
+      "label": "Quality of Hair"
+     },
+     {
+      "fieldname": "column_break_ryrn",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "quality_of_skin_donor",
+      "fieldtype": "Data",
+      "label": "Quality of Skin"
+     },
+     {
+      "fieldname": "donor_area_analysis",
+      "fieldtype": "Table",
+      "label": "Donor Area Analysis",
+      "options": "Doner Area Table"
+     },
+     {
+      "fieldname": "message",
+      "fieldtype": "Long Text",
+      "label": "Webform Message"
+     },
+     {
+      "fieldname": "address",
+      "fieldtype": "Data",
+      "label": "Address"
+     },
+     {
+      "fieldname": "ticket_number",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "ticket_number",
+      "read_only": 1
+     },
+     {
+      "fieldname": "distance",
+      "fieldtype": "Select",
+      "label": "Distance",
+      "options": "\nNear\nFar"
+     },
+     {
+      "fieldname": "imported_source",
+      "fieldtype": "Data",
+      "label": "Imported Source",
+      "read_only": 1
+     },
+     {
+      "default": "No",
+      "depends_on": "eval: doc.status == \"Duplicate Lead\"",
+      "fieldname": "attended",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Attended",
+      "options": "Yes\nNo"
+     },
+     {
+      "fieldname": "previous_executive",
+      "fieldtype": "Link",
+      "label": "Previous Executive",
+      "options": "Executive",
+      "read_only": 1
+     },
+     {
+      "fieldname": "executive_changed_date",
+      "fieldtype": "Date",
+      "label": "Executive Changed Date",
+      "read_only": 1
+     },
+     {
+      "fieldname": "lead_images_tab",
+      "fieldtype": "Tab Break",
+      "label": "Lead Images"
+     },
+     {
+      "fieldname": "lead_images_section",
+      "fieldtype": "Section Break",
+      "label": "Lead Images"
+     },
+     {
+      "fieldname": "lead_images",
+      "fieldtype": "Table",
+      "label": "Lead Images",
+      "options": "Lead Image"
+     },
+     {
+      "fieldname": "whatsapp_tab",
+      "fieldtype": "Tab Break",
+      "label": "Whatsapp"
+     },
+     {
+      "fieldname": "whatsapp_section",
+      "fieldtype": "Section Break",
+      "label": "Whatsapp"
+     },
+     {
+      "fieldname": "profession",
+      "fieldtype": "Data",
+      "label": "Profession"
+     },
+     {
+      "fieldname": "ad_name",
+      "fieldtype": "Link",
+      "label": "Ad name",
+      "options": "Meta Ads"
+     },
+     {
+      "fieldname": "whatsapp_no",
+      "fieldtype": "Data",
+      "label": "Whatsapp No"
+     },
+     {
+      "fieldname": "remark_hair_loss",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Since From (Hair loss / Active hairfall)"
+     },
+     {
+      "fieldname": "remark_baldness",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Since From (Baldness / Hair thinning)"
+     },
+     {
+      "fieldname": "remark_dandruff",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Since From (Dandruff / Itching)"
+     },
+     {
+      "fieldname": "family_history",
+      "fieldtype": "Select",
+      "label": "Family History",
+      "options": "\nMaternal side\nPaternal side\nBoth"
+     },
+     {
+      "depends_on": "eval:doc.source == 'Influencer'",
+      "fieldname": "influencer_name",
+      "fieldtype": "Data",
+      "label": "Influencer Name"
+     }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2025-09-16 21:20:20.115317",
+    "modified_by": "Administrator",
+    "module": "Frappe Hfhg",
+    "name": "Lead",
+    "naming_rule": "Expression",
+    "owner": "Administrator",
+    "permissions": [
+     {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+     }
+    ],
+    "quick_entry": 1,
+    "row_format": "Dynamic",
+    "search_fields": "status",
+    "show_name_in_global_search": 1,
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+   }

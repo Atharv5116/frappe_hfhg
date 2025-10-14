@@ -189,12 +189,10 @@ class Lead(Document):
 						min_leads = min(lead_counts.values(), default=0)
 						least_loaded_executives = [exec_name for exec_name, count in lead_counts.items() if count == min_leads]
 
-<<<<<<< Updated upstream
-=======
-						# If multiple members have the same count, assign randomly among them
->>>>>>> Stashed changes
 						assigned_executive = random.choice(least_loaded_executives)
 						self.executive = assigned_executive
+						
+						frappe.logger().info(f"SEO_Form campaign: Assigned lead to executive: {assigned_executive} (daily count: {min_leads})")
 					else:
 						frappe.log_error("No executives found in 'website form' campaign team for SEO_Form campaign. Skipping assignment.")
 
