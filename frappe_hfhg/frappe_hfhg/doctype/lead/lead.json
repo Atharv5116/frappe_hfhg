@@ -23,6 +23,7 @@
   "full_name",
   "city",
   "source",
+  "dynamic_source_name",
   "imported_source",
   "source_reference",
   "source_youtube",
@@ -335,10 +336,16 @@
   },
   {
    "fieldname": "source",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Source",
-   "options": "\nWebsite\nWebsite Form\nGoogle Adword\nGoogle GMB\nFacebook\nInstagram\nInfluencer\nWhatsApp\nHoarding\nReferences\nYoutube\nYoutuber\nQuora\nPinterest\nTwitter\nWalk In\nCall\nEmail\nJust dial\nImported Data"
+   "options": "Source"
+  },
+  {
+   "fieldname": "dynamic_source_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Source Name"
   },
   {
    "fieldname": "mode",
@@ -639,9 +646,9 @@
   },
   {
    "fieldname": "ht_technique",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "HT Technique",
-   "options": "FUE\nB-FUE\nI-FUE\nBig-FUE\nDHI"
+   "options": "HT Technique"
   },
   {
    "fieldname": "column_break_vzfd",
@@ -946,6 +953,7 @@
   {
    "fieldname": "lead_images",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Lead Images",
    "options": "Lead Image"
   },
@@ -1008,7 +1016,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-16 21:20:20.115317",
+ "modified": "2025-10-14 20:31:17.819312",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
  "name": "Lead",

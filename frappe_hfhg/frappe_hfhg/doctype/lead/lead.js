@@ -976,8 +976,24 @@ frappe.call({
       frm.set_df_property("remark_dandruff", "hidden", 0);
     }
 
+    // Set query for source field to show all records
+    frm.set_query("source", function() {
+      return {
+        page_length: 1000
+      };
+    });
+
+    // Load dynamic source fields and setup conditional logic
+    load_dynamic_source_fields(frm);
+
     hideSidebarToggle();
   },
+
+  source(frm) {
+    // Handle dynamic source field visibility
+    handle_dynamic_source_fields(frm);
+  },
+  
   executive(frm) {
     if (frm.doc.executive) {
       frm.set_value("assign_by", frappe.session.user_email);
@@ -1517,4 +1533,36 @@ function show_unified_image_dialog(frm) {
 
     d.show();
     load_images();
+}
+
+// Helper functions for dynamic source fields
+function load_dynamic_source_fields(frm) {
+    frappe.call({
+        method: "frappe_hfhg.frappe_hfhg.doctype.lead.lead.get_dynamic_source_fields",
+        callback: function(r) {
+            if (r.message) {
+                frm.dynamic_source_fields = r.message;
+                handle_dynamic_source_fields(frm);
+            }
+        }
+    });
+}
+
+function handle_dynamic_source_fields(frm) {
+    if (!frm.dynamic_source_fields || !frm.doc.source) {
+        // Hide dynamic field if no source selected
+        frm.set_df_property("dynamic_source_name", "hidden", 1);
+        return;
+    }
+
+    // Check if selected source has show_additional_field enabled
+    const selected_source_info = frm.dynamic_source_fields[frm.doc.source];
+    if (selected_source_info) {
+        // Show the dynamic field and update its label
+        frm.set_df_property("dynamic_source_name", "hidden", 0);
+        frm.set_df_property("dynamic_source_name", "label", selected_source_info.label);
+    } else {
+        // Hide the dynamic field if source doesn't have additional field enabled
+        frm.set_df_property("dynamic_source_name", "hidden", 1);
+    }
 }

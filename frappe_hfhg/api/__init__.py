@@ -2469,10 +2469,10 @@ def get_all_patient_images_unified(patient_name):
     scalp_image_url = lead.share_scalp_image if hasattr(lead, 'share_scalp_image') else None
     
     # 1. Get images from Frappe's built-in Attachments system
-    # For Lead and Costing, attached_to_name is the patient name
+    # For Lead, attached_to_name is the patient name
     attachments = frappe.get_all("File", 
         filters={
-            "attached_to_doctype": ["in", ["Lead", "Costing"]],
+            "attached_to_doctype": "Lead",
             "attached_to_name": patient_name
         },
         fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
@@ -2511,6 +2511,23 @@ def get_all_patient_images_unified(patient_name):
             fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
         )
         attachments.extend(surgery_attachments)
+    
+    # For Consultation, we need to find Consultation documents for this patient first
+    consultation_docs = frappe.get_all("Consultation", 
+        filters={"patient": patient_name},
+        fields=["name"]
+    )
+    
+    # Get attachments from all Consultation documents for this patient
+    for consultation_doc in consultation_docs:
+        consultation_attachments = frappe.get_all("File",
+            filters={
+                "attached_to_doctype": "Consultation",
+                "attached_to_name": consultation_doc.name
+            },
+            fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
+        )
+        attachments.extend(consultation_attachments)
     
     for attachment in attachments:
         if attachment.file_url and any(attachment.file_url.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']):

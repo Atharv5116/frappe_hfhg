@@ -537,3 +537,28 @@ def get_original_lead_name(contact_number, alternative_number=None, frontend_cal
 				lead_doc.status = "New Lead"
 				lead_doc.save(ignore_permissions=True)
 	return None
+
+@frappe.whitelist()
+def get_source_list():
+	"""Return all Source records without limit for the source field dropdown"""
+	return frappe.get_all("Source", fields=["name"], order_by="name asc", limit_page_length=0)
+
+@frappe.whitelist()
+def get_dynamic_source_fields():
+	"""Return Source records that have show_additional_field checked"""
+	sources = frappe.get_all("Source", 
+		filters={"show_additional_field": 1}, 
+		fields=["name", "source_name"], 
+		order_by="name asc"
+	)
+	
+	# Create field mapping: source_name -> field_name
+	field_mapping = {}
+	for source in sources:
+		field_name = f"{source.source_name.lower().replace(' ', '_')}_name"
+		field_mapping[source.name] = {
+			"field_name": field_name,
+			"label": f"{source.source_name} Name"
+		}
+	
+	return field_mapping
