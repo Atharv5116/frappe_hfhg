@@ -61,12 +61,22 @@ frappe.ui.form.on("Lead", {
       frm.doc.whatsapp_no = frm.doc.contact_number;
       fetch_and_inject_custom_html(frm);
     }
+
+
     if (!frm.is_new()) {
-      frm.add_custom_button("Upload Lead Photo", function () {
-        show_patient_photo_dialog(frm);
+      frm.add_custom_button("Upload Lead Image", function () {
+        console.log("Upload Lead Image button clicked!");
+        console.log("Form doctype:", frm.doctype);
+        console.log("Form doc name:", frm.doc.name);
+        console.log("Form doc patient:", frm.doc.patient);
+        try {
+          show_unified_image_dialog(frm);
+        } catch(e) {
+          console.error("Error calling show_unified_image_dialog:", e);
+          frappe.msgprint("Error: " + e.message);
+        }
       });
     }
-
 
     if (!frm.is_new()) {
       frm.add_custom_button(__("View Activity"), function () {
@@ -546,7 +556,7 @@ frappe.call({
                       frm.dirty();
                     });
 
-                    // Save changes on Enter key
+                    // Save changes on Enter key....
                     input.addEventListener("keypress", (e) => {
                       if (e.key === "Enter") {
                         input.blur();
@@ -966,8 +976,24 @@ frappe.call({
       frm.set_df_property("remark_dandruff", "hidden", 0);
     }
 
+    // Set query for source field to show all records
+    frm.set_query("source", function() {
+      return {
+        page_length: 1000
+      };
+    });
+
+    // Load dynamic source fields and setup conditional logic
+    load_dynamic_source_fields(frm);
+
     hideSidebarToggle();
   },
+
+  source(frm) {
+    // Handle dynamic source field visibility
+    handle_dynamic_source_fields(frm);
+  },
+  
   executive(frm) {
     if (frm.doc.executive) {
       frm.set_value("assign_by", frappe.session.user_email);
@@ -1338,3 +1364,205 @@ function fetch_and_inject_custom_html(frm) {
 //     }
 //   }, 500);  // Run after 500ms to bypass refresh overwrite
 // }
+
+// Unified Image Dialog - Shows ALL images from ALL sources across all doctypes
+function show_unified_image_dialog(frm) {
+    const patient_name = frm.doctype === 'Lead' ? frm.doc.name : frm.doc.patient;
+    
+    if (!patient_name) {
+        frappe.msgprint(__('No patient linked'));
+        return;
+    }
+
+    const d = new frappe.ui.Dialog({
+        title: __('Patient Images - {0}', [patient_name]),
+        size: 'extra-large',
+        fields: [
+            {
+                fieldtype: 'HTML',
+                fieldname: 'image_area'
+            }
+        ]
+    });
+
+    function load_images() {
+        frappe.call({
+            method: 'frappe_hfhg.api.get_all_patient_images_unified',
+            args: { patient_name: patient_name },
+            callback: function(r) {
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn btn-primary btn-sm upload-new-image">
+                            <i class="fa fa-upload"></i> Upload New Image
+                        </button>
+                        <button class="btn btn-secondary btn-sm refresh-images" style="margin-left: 10px;">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                `;
+                
+                if (r.message && r.message.length > 0) {
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">';
+                    r.message.forEach((img, index) => {
+                        html += `
+                            <div class="image-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: white;">
+                                <img src="${img.image_url}" 
+                                     style="width: 100%; height: 180px; object-fit: cover; border-radius: 5px; cursor: pointer;" 
+                                     data-url="${img.image_url}"
+                                     class="view-full-image"
+                                     title="Click to view full size">
+                                <div style="margin-top: 8px; font-size: 11px; color: #666;">
+                                    <strong>${img.source}</strong><br>
+                                    <small>${img.uploaded_on}</small>
+                                </div>
+                                <button class="btn btn-xs btn-danger delete-image" 
+                                        data-id="${img.id}" 
+                                        data-source="${img.source}"
+                                        data-source-type="${img.source_type}"
+                                        style="margin-top: 8px; width: 100%;">
+                                    <i class="fa fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                } else {
+                    html += `
+                        <div style="padding: 40px; text-align: center; color: #999;">
+                            <i class="fa fa-image" style="font-size: 48px; margin-bottom: 10px; display: block; color: #ccc;"></i>
+                            <p>No images found. Click "Upload New Image" to add images.</p>
+                        </div>
+                    `;
+                }
+                
+                d.fields_dict.image_area.$wrapper.html(html);
+                
+                // Bind click event to view full image in new tab
+                d.fields_dict.image_area.$wrapper.find('.view-full-image').on('click', function() {
+                    const img_url = $(this).data('url');
+                    // Create a new window/tab with HTML that displays the image
+                    const imageWindow = window.open('', '_blank');
+                    imageWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Image Viewer</title>
+                            <style>
+                                body {
+                                    margin: 0;
+                                    padding: 0;
+                                    background: #000;
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    min-height: 100vh;
+                                }
+                                img {
+                                    max-width: 100%;
+                                    max-height: 100vh;
+                                    object-fit: contain;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <img src="${img_url}" alt="Patient Image">
+                        </body>
+                        </html>
+                    `);
+                    imageWindow.document.close();
+                });
+                
+                // Bind delete button
+                d.fields_dict.image_area.$wrapper.find('.delete-image').on('click', function() {
+                    const img_id = $(this).data('id');
+                    const source = $(this).data('source');
+                    const source_type = $(this).data('source-type');
+                    
+                    frappe.confirm(__('Delete this image from {0}?', [source]), () => {
+                        frappe.call({
+                            method: 'frappe_hfhg.api.delete_patient_image_unified',
+                            args: { 
+                                patient_name: patient_name, 
+                                image_id: img_id, 
+                                source: source 
+                            },
+                            callback: function(r) {
+                                if (r.message && r.message.success) {
+                                    frappe.show_alert({message: __('Image deleted'), indicator: 'green'});
+                                    load_images();
+                                    frm.reload_doc();
+                                } else {
+                                    frappe.msgprint(__('Error deleting image: {0}', [r.message.message || 'Unknown error']));
+                                }
+                            }
+                        });
+                    });
+                });
+                
+                // Bind upload button
+                d.fields_dict.image_area.$wrapper.find('.upload-new-image').on('click', function() {
+                    new frappe.ui.FileUploader({
+                        allow_multiple: true,
+                        restrictions: { allowed_file_types: ['image/*'] },
+                        on_success(file) {
+                            frappe.call({
+                                method: 'frappe_hfhg.api.upload_patient_image_unified',
+                                args: { 
+                                    patient_name: patient_name, 
+                                    file_url: file.file_url 
+                                },
+                                callback: function(r) {
+                                    if (r.message && r.message.success) {
+                                        frappe.show_alert({message: __('Image uploaded'), indicator: 'green'});
+                                        load_images();
+                                        frm.reload_doc();
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                // Bind refresh button
+                d.fields_dict.image_area.$wrapper.find('.refresh-images').on('click', function() {
+                    load_images();
+                });
+            }
+        });
+    }
+
+    d.show();
+    load_images();
+}
+
+// Helper functions for dynamic source fields
+function load_dynamic_source_fields(frm) {
+    frappe.call({
+        method: "frappe_hfhg.frappe_hfhg.doctype.lead.lead.get_dynamic_source_fields",
+        callback: function(r) {
+            if (r.message) {
+                frm.dynamic_source_fields = r.message;
+                handle_dynamic_source_fields(frm);
+            }
+        }
+    });
+}
+
+function handle_dynamic_source_fields(frm) {
+    if (!frm.dynamic_source_fields || !frm.doc.source) {
+        // Hide dynamic field if no source selected
+        frm.set_df_property("dynamic_source_name", "hidden", 1);
+        return;
+    }
+
+    // Check if selected source has show_additional_field enabled
+    const selected_source_info = frm.dynamic_source_fields[frm.doc.source];
+    if (selected_source_info) {
+        // Show the dynamic field and update its label
+        frm.set_df_property("dynamic_source_name", "hidden", 0);
+        frm.set_df_property("dynamic_source_name", "label", selected_source_info.label);
+    } else {
+        // Hide the dynamic field if source doesn't have additional field enabled
+        frm.set_df_property("dynamic_source_name", "hidden", 1);
+    }
+}

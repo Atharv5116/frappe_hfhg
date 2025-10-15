@@ -1364,16 +1364,17 @@ def create_lead_background(data):
         
         # Determine center from city parameter
         city = data.get("city")
+        center = data.get("center")
         
-        if city:
+        if center:
             # Use city as center - convert to proper case: "bangalore" → "Bangalore"
-            lead.center = city.title()
+            lead.center = center.title()
         else:
             # Fallback if no city provided
             lead.center = "Unknown"
 
         # Set campaign_name FIRST (required for assignment logic)
-        lead.campaign_name = data.get("campaign_name")
+        lead.campaign_name = "SEO_Form"
         
         # Set other fields
         lead.mode = data.get("mode", "Workflow")
@@ -2450,37 +2451,141 @@ def update_payment_confirmation_by_surgery(surgery_name: str, status: str):
 
     return {"success": True, "msg": f"Updated Payment {doc.name} for patient {patient}"}
 
+
 @frappe.whitelist()
-def get_patient_photos(patient_name):
-    """Get all photos for a patient from Lead Image child table"""
+def get_all_patient_images_unified(patient_name):
+    """Get ALL images for a patient from ALL sources (Attachments, Lead Images, Scalp Image)"""
     if not patient_name:
         return []
     
-    # Get the Lead document
     if not frappe.db.exists('Lead', patient_name):
         return []
     
-    lead = frappe.get_doc('Lead', patient_name)
+    all_images = []
+    seen_urls = set()  # Track unique URLs to avoid duplicates
     
-    photos = []
-    for img in lead.lead_images:
-        photos.append({
-            'name': img.name,
-            'image': img.image,
-            'description': getattr(img, 'description', ''),
-            'uploaded_on': frappe.utils.format_datetime(img.creation, 'dd-MM-yyyy hh:mm a') if img.creation else ''
+    # Get lead doc first to check scalp image
+    lead = frappe.get_doc('Lead', patient_name)
+    scalp_image_url = lead.share_scalp_image if hasattr(lead, 'share_scalp_image') else None
+    
+    # 1. Get images from Frappe's built-in Attachments system
+    # For Lead, attached_to_name is the patient name
+    attachments = frappe.get_all("File", 
+        filters={
+            "attached_to_doctype": "Lead",
+            "attached_to_name": patient_name
+        },
+        fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
+    )
+    
+    # For Payment, we need to find Payment documents for this patient first
+    payment_docs = frappe.get_all("Payment", 
+        filters={"patient": patient_name},
+        fields=["name"]
+    )
+    
+    # Get attachments from all Payment documents for this patient
+    for payment_doc in payment_docs:
+        payment_attachments = frappe.get_all("File",
+            filters={
+                "attached_to_doctype": "Payment",
+                "attached_to_name": payment_doc.name
+            },
+            fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
+        )
+        attachments.extend(payment_attachments)
+    
+    # For Surgery, we need to find Surgery documents for this patient first
+    surgery_docs = frappe.get_all("Surgery", 
+        filters={"patient": patient_name},
+        fields=["name"]
+    )
+    
+    # Get attachments from all Surgery documents for this patient
+    for surgery_doc in surgery_docs:
+        surgery_attachments = frappe.get_all("File",
+            filters={
+                "attached_to_doctype": "Surgery",
+                "attached_to_name": surgery_doc.name
+            },
+            fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
+        )
+        attachments.extend(surgery_attachments)
+    
+    # For Consultation, we need to find Consultation documents for this patient first
+    consultation_docs = frappe.get_all("Consultation", 
+        filters={"patient": patient_name},
+        fields=["name"]
+    )
+    
+    # Get attachments from all Consultation documents for this patient
+    for consultation_doc in consultation_docs:
+        consultation_attachments = frappe.get_all("File",
+            filters={
+                "attached_to_doctype": "Consultation",
+                "attached_to_name": consultation_doc.name
+            },
+            fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
+        )
+        attachments.extend(consultation_attachments)
+    
+    for attachment in attachments:
+        if attachment.file_url and any(attachment.file_url.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']):
+            # Skip if this is the scalp image (to avoid duplicates)
+            if scalp_image_url and attachment.file_url == scalp_image_url:
+                continue
+                
+            # Handle both private and public files
+            image_url = get_full_image_url(attachment.file_url)
+            
+            if attachment.file_url not in seen_urls:
+                seen_urls.add(attachment.file_url)
+                all_images.append({
+                    'id': attachment.name,
+                    'image_url': image_url,
+                    'source': f"Attachments ({attachment.attached_to_doctype})",
+                    'uploaded_on': frappe.utils.format_datetime(attachment.creation, 'dd-MM-yyyy hh:mm a'),
+                    'file_name': attachment.file_name,
+                    'source_type': 'attachment'
+                })
+    
+    # 2. Get images from Lead's share_scalp_image field
+    if scalp_image_url and scalp_image_url not in seen_urls:
+        seen_urls.add(scalp_image_url)
+        all_images.append({
+            'id': 'scalp_image',
+            'image_url': get_full_image_url(scalp_image_url),
+            'source': 'Scalp Image (Lead)',
+            'uploaded_on': frappe.utils.format_datetime(lead.creation, 'dd-MM-yyyy hh:mm a'),
+            'file_name': 'Scalp Image',
+            'source_type': 'scalp_image'
         })
     
-    return photos
+    # 3. Get images from lead_images child table
+    for img in lead.lead_images:
+        if img.image and img.image not in seen_urls:
+            seen_urls.add(img.image)
+            all_images.append({
+                'id': img.name,
+                'image_url': get_full_image_url(img.image),
+                'source': 'Lead Images (Child Table)',
+                'uploaded_on': frappe.utils.format_datetime(img.creation, 'dd-MM-yyyy hh:mm a'),
+                'file_name': f"Image {img.name}",
+                'source_type': 'lead_images'
+            })
+    
+    # Sort by upload date (newest first)
+    all_images.sort(key=lambda x: x['uploaded_on'], reverse=True)
+    
+    return all_images
 
 
 @frappe.whitelist()
-def upload_patient_photo(patient_name, file_url, uploaded_by=None):
-    """Upload a photo to the patient's Lead document"""
+def upload_patient_image_unified(patient_name, file_url, uploaded_by=None):
+    """Upload a new image to the patient's Lead document via lead_images child table"""
     if not patient_name or not file_url:
         return {'success': False, 'message': 'Patient name and file URL are required'}
     
-    # Get the Lead document
     if not frappe.db.exists('Lead', patient_name):
         return {'success': False, 'message': f'Lead {patient_name} not found'}
     
@@ -2494,32 +2599,55 @@ def upload_patient_photo(patient_name, file_url, uploaded_by=None):
     lead.save(ignore_permissions=True)
     frappe.db.commit()
     
-    return {'success': True, 'message': 'Photo uploaded successfully'}
+    return {'success': True, 'message': 'Image uploaded successfully'}
 
 
 @frappe.whitelist()
-def delete_patient_photo(patient_name, photo_name):
-    """Delete a photo from the patient's Lead document"""
-    if not patient_name or not photo_name:
-        return {'success': False, 'message': 'Patient name and photo name are required'}
+def delete_patient_image_unified(patient_name, image_id, source):
+    """Delete an image from the patient's records"""
+    if not patient_name or not image_id:
+        return {'success': False, 'message': 'Patient name and image ID are required'}
     
-    # Get the Lead document
     if not frappe.db.exists('Lead', patient_name):
         return {'success': False, 'message': f'Lead {patient_name} not found'}
     
-    lead = frappe.get_doc('Lead', patient_name)
+    if source.startswith('Attachments'):
+        # Delete from Frappe's File system
+        frappe.delete_doc('File', image_id)
+        frappe.db.commit()
+        
+    elif source == 'Scalp Image (Lead)':
+        # Clear the scalp image field
+        lead = frappe.get_doc('Lead', patient_name)
+        lead.share_scalp_image = ''
+        lead.save(ignore_permissions=True)
+        frappe.db.commit()
+        
+    elif source == 'Lead Images (Child Table)':
+        # Remove from lead_images child table
+        lead = frappe.get_doc('Lead', patient_name)
+        for idx, img in enumerate(lead.lead_images):
+            if img.name == image_id:
+                lead.lead_images.pop(idx)
+                break
+        lead.save(ignore_permissions=True)
+        frappe.db.commit()
     
-    # Find and remove the photo from lead_images
-    for idx, img in enumerate(lead.lead_images):
-        if img.name == photo_name:
-            lead.lead_images.pop(idx)
-            break
+    return {'success': True, 'message': 'Image deleted successfully'}
+
+
+def get_full_image_url(image_path):
+    """Convert relative image path to full URL"""
+    if not image_path:
+        return ''
     
-    lead.save(ignore_permissions=True)
-    frappe.db.commit()
+    if image_path.startswith('http'):
+        return image_path
     
-    return {'success': True, 'message': 'Photo deleted successfully'}
-
-
-
-
+    if image_path.startswith('/private/'):
+        # For private files, use the file download API
+        from urllib.parse import quote
+        return frappe.utils.get_url(f"/api/method/frappe.utils.file_manager.download_file?file_url={quote(image_path)}")
+    else:
+        # For public files, just prepend site URL
+        return frappe.utils.get_url(image_path)

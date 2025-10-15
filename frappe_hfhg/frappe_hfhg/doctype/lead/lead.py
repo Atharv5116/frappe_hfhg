@@ -158,11 +158,53 @@ class Lead(Document):
 		assignee_doctype, assign_to = None, None  # Ensure these variables are always defined
 
 		if self.campaign_name:
-			try:
+			# Special handling for SEO_Form campaign (curl imports)
+			if self.campaign_name == "SEO_Form":
+				try:
+					# Get all executives from "website form" campaign team
+					website_form_executives = frappe.get_all(
+						"Campaign Team Executives",
+						filters={"parent": "website form"},
+						fields=["executive"]
+					)
+
+					if website_form_executives:
+						# Count how many leads each member currently has assigned today
+						today_date = datetime.now().strftime("%Y-%m-%d")
+						lead_counts = {}
+						
+						for record in website_form_executives:
+							executive_name = record["executive"]
+							lead_count = frappe.db.count(
+								"Lead",
+								filters={
+									"executive": executive_name,
+									"created_on": ["between", [f"{today_date} 00:00:00", f"{today_date} 23:59:59"]],
+									"status": ["!=", "Duplicate Lead"]
+								}
+							)
+							lead_counts[executive_name] = lead_count
+
+						# Find executive with the lowest number of leads
+						min_leads = min(lead_counts.values(), default=0)
+						least_loaded_executives = [exec_name for exec_name, count in lead_counts.items() if count == min_leads]
+
+						assigned_executive = random.choice(least_loaded_executives)
+						self.executive = assigned_executive
+						
+						frappe.logger().info(f"SEO_Form campaign: Assigned lead to executive: {assigned_executive} (daily count: {min_leads})")
+					else:
+						frappe.log_error("No executives found in 'website form' campaign team for SEO_Form campaign. Skipping assignment.")
+
+				except Exception as e:
+					frappe.log_error(f"Error in assigning executive from website form team for SEO_Form campaign: {str(e)}")
+			else:
+				# Regular Meta Campaign handling (original logic)
+				try:
 					campaign = frappe.get_doc("Meta Campaign", self.campaign_name)
 					assignee_doctype = getattr(campaign, "assignee_doctype", None)
 					assign_to = getattr(campaign, "assign_to", None)
-			except frappe.DoesNotExistError:
+				except frappe.DoesNotExistError:
 					frappe.log_error(f"Campaign '{self.campaign_name}' not found. Skipping campaign-based assignment.")
 
 		if self.ad_name:
@@ -495,3 +537,28 @@ def get_original_lead_name(contact_number, alternative_number=None, frontend_cal
 				lead_doc.status = "New Lead"
 				lead_doc.save(ignore_permissions=True)
 	return None
+
+@frappe.whitelist()
+def get_source_list():
+	"""Return all Source records without limit for the source field dropdown"""
+	return frappe.get_all("Source", fields=["name"], order_by="name asc", limit_page_length=0)
+
+@frappe.whitelist()
+def get_dynamic_source_fields():
+	"""Return Source records that have show_additional_field checked"""
+	sources = frappe.get_all("Source", 
+		filters={"show_additional_field": 1}, 
+		fields=["name", "source_name"], 
+		order_by="name asc"
+	)
+	
+	# Create field mapping: source_name -> field_name
+	field_mapping = {}
+	for source in sources:
+		field_name = f"{source.source_name.lower().replace(' ', '_')}_name"
+		field_mapping[source.name] = {
+			"field_name": field_name,
+			"label": f"{source.source_name} Name"
+		}
+	
+	return field_mapping
