@@ -119,15 +119,38 @@ formatter: function(value, row, column, data, default_formatter) {
         // patient docname we added in Python
         const patient_doc = frappe.utils.escape_html(data.patient_docname);
 
-        // build dropdown
-        return `
-            <select class="payment-confirm-select" data-patient-doc="${patient_doc}">
-                <option value="">-- Select --</option>
-                <option value="Received" ${current === "Received" ? "selected" : ""}>Received</option>
-                <option value="Not Received" ${current === "Not Received" ? "selected" : ""}>Not Received</option>
-                <option value="Partial Received" ${current === "Partial Received" ? "selected" : ""}>Partial Received</option>
-            </select>
-        `;
+        // Check user roles - only System Manager and Accountant can edit
+        let user_roles = [];
+        let can_edit = false;
+        try {
+            user_roles = frappe.user_roles || [];
+            can_edit = user_roles.includes("System Manager") || user_roles.includes("Accountant");
+            console.log("User roles:", user_roles, "Can edit:", can_edit, "Current status:", current);
+        } catch (e) {
+            console.warn("Could not access user roles:", e);
+        }
+        
+        // If status is "Received", make it read-only for everyone (no exceptions)
+        // Otherwise, only System Manager and Accountant can edit
+        const is_readonly = (current === "Received") || !can_edit;
+        console.log("Is readonly:", is_readonly);
+
+        if (is_readonly) {
+            // Show as read-only text
+            return `<span class="payment-confirm-readonly" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; background-color: #f9f9f9; color: #666;">
+                ${current || "-- Select --"}
+            </span>`;
+        } else {
+            // Show as editable dropdown
+            return `
+                <select class="payment-confirm-select" data-patient-doc="${patient_doc}">
+                    <option value="">-- Select --</option>
+                    <option value="Received" ${current === "Received" ? "selected" : ""}>Received</option>
+                    <option value="Not Received" ${current === "Not Received" ? "selected" : ""}>Not Received</option>
+                    <option value="Partial Received" ${current === "Partial Received" ? "selected" : ""}>Partial Received</option>
+                </select>
+            `;
+        }
     }
 
     return out;
@@ -296,16 +319,28 @@ $(document).on("change", ".payment-confirm-select", function() {
         callback: function(r) {
             if (r && r.message && r.message.success) {
                 frappe.show_alert({ message: r.message.msg, indicator: "green" });
+                
+                // If Payment Confirmation status is "Received", make it read-only immediately
+                if (status === "Received") {
+                    // Replace the dropdown with read-only text
+                    $sel.replaceWith(`
+                        <span class="payment-confirm-readonly" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; background-color: #f9f9f9; color: #666;">
+                            Received
+                        </span>
+                    `);
+                } else {
+                    // Re-enable the dropdown for other statuses
+                    $sel.prop("disabled", false);
+                }
             } else {
                 const msg = r && r.message && r.message.msg ? r.message.msg : "Failed to update payment";
                 frappe.msgprint(msg);
+                $sel.prop("disabled", false);
             }
         },
         error: function(err) {
             frappe.msgprint("Server error while updating payment confirmation.");
             console.error(err);
-        },
-        always: function() {
             $sel.prop("disabled", false);
         }
     });
