@@ -1373,8 +1373,17 @@ def create_lead_background(data):
             # Fallback if no city provided
             lead.center = "Unknown"
 
-        # Set campaign_name FIRST (required for assignment logic)
-        lead.campaign_name = "SEO_Form"
+        # Set source first to check for campaign_name logic
+        source = data.get("source")
+        lead.source = source
+        
+        # Set campaign_name based on source
+        # If source is "Website Form", use "SEO_Form"
+        # Otherwise, use the campaign_name from curl request
+        if source == "Website Form":
+            lead.campaign_name = "SEO_Form"
+        else:
+            lead.campaign_name = data.get("campaign_name")
         
         # Set other fields
         lead.mode = data.get("mode", "Workflow")
@@ -1382,7 +1391,6 @@ def create_lead_background(data):
         lead.contact_number = data.get("contact_number")
         lead.message = data.get("message", "")
         lead.city = city
-        lead.source = data.get("source")
         
         # Set additional fields from your curl
         lead.created_on = data.get("created_on")
