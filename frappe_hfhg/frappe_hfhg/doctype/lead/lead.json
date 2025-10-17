@@ -26,6 +26,7 @@
   "dynamic_source_name",
   "imported_source",
   "source_reference",
+  "reference_surgery_info",
   "source_youtube",
   "youtuber_name",
   "influencer_name",
@@ -364,6 +365,13 @@
    "fieldname": "source_reference",
    "fieldtype": "Data",
    "label": "Dr/Patient name"
+  },
+  {
+   "fieldname": "reference_surgery_info",
+   "fieldtype": "HTML",
+   "hidden": 1,
+   "label": "Reference Surgery Information",
+   "read_only": 1
   },
   {
    "fieldname": "assign_by",
