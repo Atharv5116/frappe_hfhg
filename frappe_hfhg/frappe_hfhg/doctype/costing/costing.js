@@ -33,6 +33,13 @@ frappe.ui.form.on("Costing", {
     }
   },
   refresh(frm) {
+    // Add Upload Lead Image button
+    if (!frm.is_new() && frm.doc.patient) {
+      frm.add_custom_button("Upload Lead Image", function () {
+        show_unified_image_dialog(frm);
+      });
+    }
+
     if (!frm.is_new()) {
       setTimeout(() => {
         frappe.call({
@@ -232,3 +239,173 @@ frappe.ui.form.on("Costing", {
     }
   },
 });
+
+// Unified Image Dialog - Shows ALL images from ALL sources across all doctypes
+function show_unified_image_dialog(frm) {
+    const patient_name = frm.doctype === 'Lead' ? frm.doc.name : frm.doc.patient;
+    
+    if (!patient_name) {
+        frappe.msgprint(__('No patient linked'));
+        return;
+    }
+
+    const d = new frappe.ui.Dialog({
+        title: __('Patient Images - {0}', [patient_name]),
+        size: 'extra-large',
+        fields: [
+            {
+                fieldtype: 'HTML',
+                fieldname: 'image_area'
+            }
+        ]
+    });
+
+    function load_images() {
+        frappe.call({
+            method: 'frappe_hfhg.api.get_all_patient_images_unified',
+            args: { patient_name: patient_name },
+            callback: function(r) {
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn btn-primary btn-sm upload-new-image">
+                            <i class="fa fa-upload"></i> Upload New Image
+                        </button>
+                        <button class="btn btn-secondary btn-sm refresh-images" style="margin-left: 10px;">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                `;
+                
+                if (r.message && r.message.length > 0) {
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">';
+                    r.message.forEach((img, index) => {
+                        html += `
+                            <div class="image-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: white;">
+                                <img src="${img.image_url}" 
+                                     style="width: 100%; height: 180px; object-fit: cover; border-radius: 5px; cursor: pointer;" 
+                                     data-url="${img.image_url}"
+                                     class="view-full-image"
+                                     title="Click to view full size">
+                                <div style="margin-top: 8px; font-size: 11px; color: #666;">
+                                    <strong>${img.source}</strong><br>
+                                    <small>${img.uploaded_on}</small>
+                                </div>
+                                <button class="btn btn-xs btn-danger delete-image" 
+                                        data-id="${img.id}" 
+                                        data-source="${img.source}"
+                                        data-source-type="${img.source_type}"
+                                        style="margin-top: 8px; width: 100%;">
+                                    <i class="fa fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                } else {
+                    html += `
+                        <div style="padding: 40px; text-align: center; color: #999;">
+                            <i class="fa fa-image" style="font-size: 48px; margin-bottom: 10px; display: block; color: #ccc;"></i>
+                            <p>No images found. Click "Upload New Image" to add images.</p>
+                        </div>
+                    `;
+                }
+                
+                d.fields_dict.image_area.$wrapper.html(html);
+                
+                // Bind click event to view full image in new tab
+                d.fields_dict.image_area.$wrapper.find('.view-full-image').on('click', function() {
+                    const img_url = $(this).data('url');
+                    // Create a new window/tab with HTML that displays the image
+                    const imageWindow = window.open('', '_blank');
+                    imageWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Image Viewer</title>
+                            <style>
+                                body {
+                                    margin: 0;
+                                    padding: 0;
+                                    background: #000;
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    min-height: 100vh;
+                                }
+                                img {
+                                    max-width: 100%;
+                                    max-height: 100vh;
+                                    object-fit: contain;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <img src="${img_url}" alt="Patient Image">
+                        </body>
+                        </html>
+                    `);
+                    imageWindow.document.close();
+                });
+                
+                // Bind delete button
+                d.fields_dict.image_area.$wrapper.find('.delete-image').on('click', function() {
+                    const img_id = $(this).data('id');
+                    const source = $(this).data('source');
+                    const source_type = $(this).data('source-type');
+                    
+                    frappe.confirm(__('Delete this image from {0}?', [source]), () => {
+                        frappe.call({
+                            method: 'frappe_hfhg.api.delete_patient_image_unified',
+                            args: { 
+                                patient_name: patient_name, 
+                                image_id: img_id, 
+                                source: source 
+                            },
+                            callback: function(r) {
+                                if (r.message && r.message.success) {
+                                    frappe.show_alert({message: __('Image deleted'), indicator: 'green'});
+                                    load_images();
+                                    frm.reload_doc();
+                                } else {
+                                    frappe.msgprint(__('Error deleting image: {0}', [r.message.message || 'Unknown error']));
+                                }
+                            }
+                        });
+                    });
+                });
+                
+                // Bind upload button
+                d.fields_dict.image_area.$wrapper.find('.upload-new-image').on('click', function() {
+                    new frappe.ui.FileUploader({
+                        allow_multiple: true,
+                        restrictions: { allowed_file_types: ['image/*'] },
+                        on_success(file) {
+                            frappe.call({
+                                method: 'frappe_hfhg.api.upload_patient_image_unified',
+                                args: { 
+                                    patient_name: patient_name, 
+                                    file_url: file.file_url 
+                                },
+                                callback: function(r) {
+                                    if (r.message && r.message.success) {
+                                        frappe.show_alert({message: __('Image uploaded'), indicator: 'green'});
+                                        load_images();
+                                        frm.reload_doc();
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                // Bind refresh button
+                d.fields_dict.image_area.$wrapper.find('.refresh-images').on('click', function() {
+                    load_images();
+                });
+            }
+        });
+    }
+
+    d.show();
+    load_images();
+}
