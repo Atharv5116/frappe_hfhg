@@ -64,7 +64,7 @@ frappe.ui.form.on("Lead", {
 
 
     if (!frm.is_new()) {
-      frm.add_custom_button("Upload Lead Image", function () {
+      frm.add_custom_button("Update Image", function () {
         console.log("Upload Lead Image button clicked!");
         console.log("Form doctype:", frm.doctype);
         console.log("Form doc name:", frm.doc.name);
@@ -986,12 +986,29 @@ frappe.call({
     // Load dynamic source fields and setup conditional logic
     load_dynamic_source_fields(frm);
 
+    // Load reference surgery info if source is References and source_reference is filled
+    if (frm.doc.source === "References" && frm.doc.source_reference) {
+      fetch_reference_surgery_info(frm);
+    }
+
     hideSidebarToggle();
   },
 
   source(frm) {
     // Handle dynamic source field visibility
     handle_dynamic_source_fields(frm);
+  },
+  
+  source_reference(frm) {
+    // Fetch and display surgery information when patient name/number is entered
+    console.log("source_reference triggered:", frm.doc.source_reference, "source:", frm.doc.source);
+    if (frm.doc.source_reference && frm.doc.source === "References") {
+      fetch_reference_surgery_info(frm);
+    } else {
+      // Clear the HTML field if no reference is entered
+      frm.set_df_property("reference_surgery_info", "options", "");
+      frm.set_df_property("reference_surgery_info", "hidden", 1);
+    }
   },
   
   executive(frm) {
@@ -1565,4 +1582,184 @@ function handle_dynamic_source_fields(frm) {
         // Hide the dynamic field if source doesn't have additional field enabled
         frm.set_df_property("dynamic_source_name", "hidden", 1);
     }
+}
+
+// Fetch surgery information for reference patient
+function fetch_reference_surgery_info(frm) {
+    const patient_identifier = frm.doc.source_reference.trim();
+    
+    console.log("Fetching surgery info for:", patient_identifier);
+    
+    if (!patient_identifier) {
+        console.log("No patient identifier, hiding field");
+        frm.set_df_property("reference_surgery_info", "options", "");
+        frm.set_df_property("reference_surgery_info", "hidden", 1);
+        return;
+    }
+
+    // Hide field initially while loading
+    frm.set_df_property("reference_surgery_info", "hidden", 1);
+
+    // Check if input is a phone number (contains digits)
+    const is_phone_number = /\d{8,}/.test(patient_identifier);
+    
+    console.log("Input type detected:", is_phone_number ? "Phone Number" : "Patient Name");
+    
+    // Search Surgery directly - much simpler approach!
+    search_surgery_directly(patient_identifier, is_phone_number, frm);
+}
+
+// Direct search in Surgery doctype - much simpler!
+function search_surgery_directly(identifier, is_phone_number, frm) {
+    console.log("Searching Surgery directly for:", identifier, is_phone_number ? "(phone)" : "(name)");
+    
+    let filters = {};
+    
+    if (is_phone_number) {
+        // Search by contact_number - partial match for phone numbers
+        filters = {
+            'contact_number': ['like', '%' + identifier + '%']
+        };
+    } else {
+        // Search by first_name - EXACT match for names
+        filters = {
+            'first_name': identifier
+        };
+    }
+    
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'Surgery',
+            filters: filters,
+            fields: ['name', 'patient', 'first_name', 'contact_number', 'surgery_date', 'center', 'technique', 'note', 'grafts'],
+            order_by: 'surgery_date desc',
+            limit_page_length: 0
+        },
+        callback: function(r) {
+            console.log("Surgery data received:", r.message);
+            display_surgery_results(r.message, identifier, null, frm);
+        },
+        error: function(err) {
+            console.error("Error fetching surgery data:", err);
+            frm.set_df_property("reference_surgery_info", "options", "");
+            frm.set_df_property("reference_surgery_info", "hidden", 1);
+        }
+    });
+}
+
+    // Helper function to search Surgery by patient name
+    function search_surgery_by_name(patient_name, lead_data, frm) {
+        console.log("Searching Surgery records for patient name:", patient_name);
+        
+        // First try exact match
+        frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Surgery',
+                filters: {
+                    'patient': patient_name  // Exact match first
+                },
+                fields: ['name', 'patient', 'surgery_date', 'center', 'technique', 'note', 'grafts'],
+                order_by: 'surgery_date desc',
+                limit_page_length: 0
+            },
+            callback: function(r) {
+                console.log("Surgery data received (exact match):", r.message);
+                
+                // If no exact match, try starts with pattern
+                if (!r.message || r.message.length === 0) {
+                    console.log("No exact match found, trying starts with pattern...");
+                    frappe.call({
+                        method: 'frappe.client.get_list',
+                        args: {
+                            doctype: 'Surgery',
+                            filters: {
+                                'patient': ['like', patient_name + '%']  // Starts with patient_name
+                            },
+                            fields: ['name', 'patient', 'surgery_date', 'center', 'technique', 'note', 'grafts'],
+                            order_by: 'surgery_date desc',
+                            limit_page_length: 0
+                        },
+                        callback: function(r2) {
+                            console.log("Surgery data received (starts with):", r2.message);
+                            display_surgery_results(r2.message, patient_name, lead_data, frm);
+                        },
+                        error: function(err) {
+                            console.error("Error fetching surgery data (starts with):", err);
+                            frm.set_df_property("reference_surgery_info", "hidden", 1);
+                        }
+                    });
+                    return;
+                }
+                
+                // Display exact match results
+                display_surgery_results(r.message, patient_name, lead_data, frm);
+            },
+            error: function(err) {
+                console.error("Error fetching surgery data:", err);
+                frm.set_df_property("reference_surgery_info", "options", "");
+                frm.set_df_property("reference_surgery_info", "hidden", 1);
+            }
+        });
+    }
+
+// Display surgery results in HTML field
+function display_surgery_results(surgeries, patient_name, lead_data, frm) {
+            if (surgeries && surgeries.length > 0) {
+                console.log("Found", surgeries.length, "surgery records, showing field");
+                // Build HTML to display surgery information
+                let html = '<div style="border: 1px solid #d1d8dd; border-radius: 4px; padding: 15px; background: #f9fafb; margin-top: 10px;">';
+                html += '<h4 style="margin-top: 0; margin-bottom: 15px; color: #36414c; font-size: 14px;">Surgery Records</h4>';
+                
+                if (lead_data) {
+                    html += '<div style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 4px;">';
+                    html += '<strong>Patient:</strong> ' + frappe.utils.escape_html(lead_data.full_name || lead_data.first_name) + ' (' + lead_data.name + ')<br>';
+                    html += '<strong>Contact:</strong> ' + (lead_data.contact_number || 'N/A');
+                    html += '</div>';
+                } else {
+                    html += '<div style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 4px;">';
+                    html += '<strong>Patient:</strong> ' + frappe.utils.escape_html(surgeries[0].patient);
+                    html += '</div>';
+                }
+                
+                surgeries.forEach((surgery, index) => {
+                    html += '<div style="background: white; padding: 12px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #2490ef;">';
+                    html += '<div style="font-weight: 600; color: #36414c; margin-bottom: 8px;">Surgery #' + (index + 1) + ' - ' + surgery.name + '</div>';
+                    html += '<table style="width: 100%; font-size: 13px;">';
+                    html += '<tr><td style="padding: 4px 0; width: 150px; color: #6c7680;"><strong>Surgery Date:</strong></td><td style="padding: 4px 0;">' + (surgery.surgery_date || 'N/A') + '</td></tr>';
+                    html += '<tr><td style="padding: 4px 0; color: #6c7680;"><strong>Center:</strong></td><td style="padding: 4px 0;">' + (surgery.center || 'N/A') + '</td></tr>';
+                    html += '<tr><td style="padding: 4px 0; color: #6c7680;"><strong>Technique:</strong></td><td style="padding: 4px 0;">' + (surgery.technique || 'N/A') + '</td></tr>';
+                    html += '<tr><td style="padding: 4px 0; color: #6c7680;"><strong>Grafts:</strong></td><td style="padding: 4px 0;">' + (surgery.grafts || 'N/A') + '</td></tr>';
+                    if (surgery.note) {
+                        html += '<tr><td style="padding: 4px 0; color: #6c7680; vertical-align: top;"><strong>Note:</strong></td><td style="padding: 4px 0;">' + frappe.utils.escape_html(surgery.note) + '</td></tr>';
+                    }
+                    html += '</table>';
+                    html += '</div>';
+                });
+                
+                html += '</div>';
+                
+                // Show field only if data is found
+                console.log("Setting HTML content to field...");
+                
+                // Try multiple methods to show the field
+                frm.set_df_property("reference_surgery_info", "hidden", 0);
+                frm.set_df_property("reference_surgery_info", "options", html);
+                
+                // Also set directly via wrapper
+                if (frm.fields_dict.reference_surgery_info) {
+                    frm.fields_dict.reference_surgery_info.$wrapper.html(html);
+                    frm.fields_dict.reference_surgery_info.$wrapper.show();
+                    console.log("Field wrapper updated directly");
+                }
+                
+                frm.refresh_field("reference_surgery_info");
+                console.log("Field updated and refreshed");
+            } else {
+                // No surgery found - keep field hidden
+                console.log("No surgery records found for patient name:", patient_name);
+                frm.set_df_property("reference_surgery_info", "options", "");
+                frm.set_df_property("reference_surgery_info", "hidden", 1);
+            }
 }
