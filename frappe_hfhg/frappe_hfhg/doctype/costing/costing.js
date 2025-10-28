@@ -15,7 +15,12 @@ frappe.ui.form.on("Costing", {
       frm.set_df_property("surgery_date", "read_only", 1);
     }
 
-    if (frm.doc.surgery_date) {
+    // Check if booking payment done AND surgery_date is set - make entire form read-only
+    if (!frm.is_new() && frm.doc.status === "Booking" && frm.doc.surgery_date) {
+      make_costing_readonly(frm);
+      console.log("Costing locked: Booking payment done and surgery date saved");
+    } else if (frm.doc.surgery_date) {
+      // Old logic: If surgery_date set but no booking, only lock for Executives
       if (
         frappe.user_roles.includes("Executive") &&
         !frappe.user_roles.includes("System Manager")
@@ -33,6 +38,12 @@ frappe.ui.form.on("Costing", {
     }
   },
   refresh(frm) {
+    // Check if booking payment done AND surgery_date is set - make entire form read-only
+    if (!frm.is_new() && frm.doc.status === "Booking" && frm.doc.surgery_date) {
+      make_costing_readonly(frm);
+      console.log("Costing locked: Booking payment done and surgery date saved");
+    }
+    
     // Add Upload Lead Image button
     if (!frm.is_new() && frm.doc.patient) {
       frm.add_custom_button("Upload Lead Image", function () {
@@ -239,6 +250,31 @@ frappe.ui.form.on("Costing", {
     }
   },
 });
+
+// Helper function to make entire Costing form read-only
+function make_costing_readonly(frm) {
+  // Make all editable fields read-only for everyone
+  frm.set_df_property("surgery_date", "read_only", 1);
+  frm.set_df_property("grafts", "read_only", 1);
+  frm.set_df_property("graft_price", "read_only", 1);
+  frm.set_df_property("total_amount", "read_only", 1);
+  frm.set_df_property("doctor", "read_only", 1);
+  frm.set_df_property("center", "read_only", 1);
+  frm.set_df_property("technique", "read_only", 1);
+  frm.set_df_property("prp", "read_only", 1);
+  frm.set_df_property("note", "read_only", 1);
+  frm.set_df_property("with_gst_amount", "read_only", 1);
+  frm.set_df_property("without_gst_amount", "read_only", 1);
+  
+  // Show a message to the user
+  if (!frm.__readonly_message_shown) {
+    frappe.show_alert({
+      message: __('This Costing record is locked (Booking payment done and surgery date saved)'),
+      indicator: 'orange'
+    }, 5);
+    frm.__readonly_message_shown = true;
+  }
+}
 
 // Unified Image Dialog - Shows ALL images from ALL sources across all doctypes
 function show_unified_image_dialog(frm) {
