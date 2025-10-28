@@ -2486,6 +2486,23 @@ def get_all_patient_images_unified(patient_name):
         fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
     )
     
+    # For Costing, we need to find Costing documents for this patient first
+    costing_docs = frappe.get_all("Costing", 
+        filters={"patient": patient_name},
+        fields=["name"]
+    )
+    
+    # Get attachments from all Costing documents for this patient
+    for costing_doc in costing_docs:
+        costing_attachments = frappe.get_all("File",
+            filters={
+                "attached_to_doctype": "Costing",
+                "attached_to_name": costing_doc.name
+            },
+            fields=["name", "file_url", "file_name", "creation", "attached_to_doctype", "is_private"]
+        )
+        attachments.extend(costing_attachments)
+    
     # For Payment, we need to find Payment documents for this patient first
     payment_docs = frappe.get_all("Payment", 
         filters={"patient": patient_name},

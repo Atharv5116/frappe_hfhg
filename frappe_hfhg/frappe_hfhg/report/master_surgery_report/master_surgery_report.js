@@ -104,7 +104,13 @@ frappe.query_reports["Master Surgery Report"] = {
 	},
 formatter: function(value, row, column, data, default_formatter) {
     // default formatting
-    const out = default_formatter(value, row, column, data);
+    let out = default_formatter(value, row, column, data);
+
+    // Highlight entire row green if payment_confirmation is "Received"
+    if (data && data.payment_confirmation === "Received") {
+        // Wrap the cell content with green background
+        out = '<div style="background-color: #d4edda; padding: 4px;">' + out + '</div>';
+    }
 
     // only for payment_confirmation column
     if (column && column.fieldname === "payment_confirmation") {
@@ -322,12 +328,38 @@ $(document).on("change", ".payment-confirm-select", function() {
                 
                 // If Payment Confirmation status is "Received", make it read-only immediately
                 if (status === "Received") {
+                    // Get the row reference BEFORE replacing the dropdown
+                    const $row = $sel.closest('tr');
+                    console.log("Row found:", $row.length);
+                    
                     // Replace the dropdown with read-only text
                     $sel.replaceWith(`
                         <span class="payment-confirm-readonly" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; background-color: #f9f9f9; color: #666;">
                             Received
                         </span>
                     `);
+                    
+                    // Change row color to green immediately
+                    if ($row.length) {
+                        console.log("Changing row background to green...");
+                        
+                        // Find all cells in this row
+                        $row.find('td').each(function() {
+                            const $cell = $(this);
+                            
+                            // Check if cell already has a green div from formatter
+                            const $greenDiv = $cell.find('div[style*="background-color: #d4edda"]');
+                            
+                            if ($greenDiv.length === 0) {
+                                // No green div yet, wrap the content
+                                const cellContent = $cell.html();
+                                $cell.html('<div style="background-color: #d4edda; padding: 4px;">' + cellContent + '</div>');
+                            }
+                            // If already has green div, do nothing (already green from formatter)
+                        });
+                        
+                        console.log("Row turned green instantly!");
+                    }
                 } else {
                     // Re-enable the dropdown for other statuses
                     $sel.prop("disabled", false);
