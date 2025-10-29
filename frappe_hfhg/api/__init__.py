@@ -869,21 +869,60 @@ def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
     if center !=  "ALL":
         filters["center"] = center    
     
-    surgeries_docs = frappe.db.get_list('Surgery' ,filters={
-        "surgery_date" : ["between", [start_date,end_date]],
-        "status" : ["!=", "Cancelled"],
-        **filters    
-    }, fields = ["patient as name"  ,"surgery_date as date" , "center", "doctor", "contact_number" ,"total_amount", "status", "city", "executive","note", "surgery_status","lead_source","grafts","graft_price","technique","amount_paid","prp" ,"pending_amount","with_gst_amount","without_gst_amount"],ignore_permissions=True)
+    # Fetch Surgery records with full_name from Lead using SQL join
+    surgery_sql = """
+        SELECT 
+            COALESCE(l.full_name, s.patient) as name,
+            s.surgery_date as date,
+            s.center,
+            s.doctor,
+            s.contact_number,
+            s.total_amount,
+            s.status,
+            s.city,
+            s.executive,
+            s.note,
+            s.surgery_status,
+            s.lead_source,
+            s.grafts,
+            s.graft_price,
+            s.technique,
+            s.amount_paid,
+            s.prp,
+            s.pending_amount,
+            s.with_gst_amount,
+            s.without_gst_amount
+        FROM `tabSurgery` s
+        LEFT JOIN `tabCosting` c ON s.patient = c.name
+        LEFT JOIN `tabLead` l ON c.patient = l.name
+        WHERE s.surgery_date BETWEEN %s AND %s AND s.status != 'Cancelled'
+    """
+    surgery_params = [start_date, end_date]
+    if center != "ALL":
+        surgery_sql += " AND s.center = %s"
+        surgery_params.append(center)
+    
+    surgeries_docs = frappe.db.sql(surgery_sql, tuple(surgery_params), as_dict=True)
     
     surgery_entries = frappe.get_all("Graft Entry", filters={"date" : ["between", [start_date,end_date]]}, fields=["*"],ignore_permissions=True)
     surgeries = []
     for y in surgery_entries:
         surgery = frappe.get_doc("Surgery", y["parent"], fields=["*"],ignore_permissions=True)
         if center == "ALL" or surgery.center == center:
+            # Get full_name from Lead via Costing
+            full_name = surgery.patient  # Default to patient ID
+            try:
+                costing = frappe.get_doc("Costing", surgery.patient)
+                if costing.patient:
+                    lead = frappe.get_doc("Lead", costing.patient)
+                    full_name = lead.full_name if lead.full_name else surgery.patient
+            except:
+                pass
+            
             surgeries.append({
             "type" : "Surgery",
             "date" : y["date"],
-            "name": surgery.name,
+            "name": full_name,
             "doctor": surgery.doctor,
             "contact_number": surgery.contact_number,
             "center": surgery.center,
@@ -932,19 +971,58 @@ def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
         select sum(total_amount) as income_till_date from `tabSurgery` where status = "Paid"             
     """,as_dict =  True)
     
-    consultations = frappe.db.get_list('Consultation' ,filters={
-        "date" : ["between", [start_date,end_date]],
-        **filters
-    }, fields = ["patient as name"  ,"date" , "center", "doctor", "phone as contact_number", "name as id", "total_amount", "payment_status", "payment_status as status", "slot", "executive","note", "city", "payment"],ignore_permissions=True )
+    # Fetch Consultation records with full_name from Lead using SQL join
+    consultation_sql = """
+        SELECT 
+            COALESCE(l.full_name, c.patient) as name,
+            c.date,
+            c.center,
+            c.doctor,
+            c.phone as contact_number,
+            c.name as id,
+            c.total_amount,
+            c.payment_status,
+            c.payment_status as status,
+            c.slot,
+            c.executive,
+            c.note,
+            c.city,
+            c.payment
+        FROM `tabConsultation` c
+        LEFT JOIN `tabLead` l ON c.patient = l.name
+        WHERE c.date BETWEEN %s AND %s
+    """
+    consultation_params = [start_date, end_date]
+    if center != "ALL":
+        consultation_sql += " AND c.center = %s"
+        consultation_params.append(center)
+    
+    consultations = frappe.db.sql(consultation_sql, tuple(consultation_params), as_dict=True)
     
     consultations_till_date_income = frappe.db.sql("""
         select sum(total_amount) as income_till_date from `tabConsultation` where payment_status = "Paid"             
     """,as_dict =  True)
 
-    treatments = frappe.db.get_list('Treatment' ,filters={
-        "procedure_date" : ["between", [start_date,end_date]],
-         **filters
-    }, fields = ["patient as name"  ,"procedure_date as date" , "center", "name as id", "total_amount", "status"],ignore_permissions=True )
+    # Fetch Treatment records with full_name from Lead using SQL join
+    treatment_sql = """
+        SELECT 
+            COALESCE(l.full_name, t.patient) as name,
+            t.procedure_date as date,
+            t.center,
+            t.name as id,
+            t.total_amount,
+            t.status
+        FROM `tabTreatment` t
+        LEFT JOIN `tabCosting` c ON t.patient = c.name
+        LEFT JOIN `tabLead` l ON c.patient = l.name
+        WHERE t.procedure_date BETWEEN %s AND %s
+    """
+    treatment_params = [start_date, end_date]
+    if center != "ALL":
+        treatment_sql += " AND t.center = %s"
+        treatment_params.append(center)
+    
+    treatments = frappe.db.sql(treatment_sql, tuple(treatment_params), as_dict=True)
     
     treatments_till_date_income = frappe.db.sql("""
         select sum(total_amount) as income_till_date from `tabTreatment` where status = "Paid"             
