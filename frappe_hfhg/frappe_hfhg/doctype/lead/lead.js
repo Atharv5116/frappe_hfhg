@@ -76,7 +76,7 @@ frappe.ui.form.on("Lead", {
 
 
     if (!frm.is_new()) {
-      frm.add_custom_button("Upload Lead Image", function () {
+      frm.add_custom_button("Update Image", function () {
         console.log("Upload Lead Image button clicked!");
         console.log("Form doctype:", frm.doctype);
         console.log("Form doc name:", frm.doc.name);
@@ -88,52 +88,6 @@ frappe.ui.form.on("Lead", {
           frappe.msgprint("Error: " + e.message);
         }
       });
-      
-      // Add bulk update button (only for System Manager)
-      if (frappe.user_roles.includes('System Manager')) {
-        console.log("Update All Full Names button added");
-        frm.add_custom_button("Update All Full Names", function () {
-          frappe.confirm(
-            'This will update the Full Name field for all existing Lead records. Continue?',
-            function() {
-              // User confirmed, proceed
-              frappe.call({
-                method: 'frappe_hfhg.frappe_hfhg.doctype.lead.lead.bulk_update_lead_full_names',
-                callback: function(r) {
-                  if (r.message && r.message.success) {
-                    frappe.show_alert({
-                      message: r.message.message,
-                      indicator: 'green'
-                    }, 10);
-                    frappe.msgprint({
-                      title: __('Bulk Update Complete'),
-                      message: __(`
-                        <strong>Results:</strong><br>
-                        ✅ Updated: ${r.message.updated} leads<br>
-                        ⏭️ Skipped: ${r.message.skipped} leads (already correct)
-                      `),
-                      indicator: 'green'
-                    });
-                  } else {
-                    frappe.msgprint({
-                      title: __('Error'),
-                      message: r.message ? r.message.message : 'Failed to update leads',
-                      indicator: 'red'
-                    });
-                  }
-                },
-                error: function(r) {
-                  frappe.msgprint({
-                    title: __('Error'),
-                    message: __('An error occurred while updating leads'),
-                    indicator: 'red'
-                  });
-                }
-              });
-            }
-          );
-        }).addClass('btn-warning');
-      }
     }
 
     if (!frm.is_new()) {

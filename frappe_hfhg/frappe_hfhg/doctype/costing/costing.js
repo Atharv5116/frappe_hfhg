@@ -46,7 +46,7 @@ frappe.ui.form.on("Costing", {
     
     // Add Upload Lead Image button
     if (!frm.is_new() && frm.doc.patient) {
-      frm.add_custom_button("Upload Lead Image", function () {
+      frm.add_custom_button("Update Image", function () {
         show_unified_image_dialog(frm);
       });
     }
