@@ -13,6 +13,9 @@ from frappe.utils import today
 
 class Lead(Document):
 	def validate(self):
+		# Update full_name from first_name, middle_name, last_name
+		self.update_full_name()
+		
 		self.contact_number_copy = self.contact_number.split("-")[-1] if self.contact_number else None
 		self.alternative_number_copy = self.alternative_number.split("-")[-1] if self.alternative_number else None
 
@@ -41,7 +44,23 @@ class Lead(Document):
 			number = self.alternative_number.split("-")[-1]
 			if len(number) > 10 and number[0] == "0":
 				number = number[1:]
-				self.alternative_number = self.alternative_number.split("-")[0] + "-" + number 
+				self.alternative_number = self.alternative_number.split("-")[0] + "-" + number
+	
+	def update_full_name(self):
+		"""Update full_name field from first_name, middle_name, and last_name"""
+		full_name_parts = []
+		
+		if self.first_name:
+			full_name_parts.append(self.first_name.strip())
+		
+		if self.middle_name:
+			full_name_parts.append(self.middle_name.strip())
+		
+		if self.last_name:
+			full_name_parts.append(self.last_name.strip())
+		
+		# Update full_name field
+		self.full_name = " ".join(full_name_parts) if full_name_parts else "" 
 
 	def after_insert(self):
 		lead = get_original_lead_name(self.contact_number, self.alternative_number)
@@ -562,3 +581,59 @@ def get_dynamic_source_fields():
 		}
 	
 	return field_mapping
+
+@frappe.whitelist()
+def bulk_update_lead_full_names():
+	"""Bulk update full_name for all existing Lead records"""
+	
+	try:
+		# Get all leads
+		leads = frappe.get_all('Lead', 
+			fields=['name', 'first_name', 'middle_name', 'last_name', 'full_name'],
+			limit_page_length=0
+		)
+		
+		updated_count = 0
+		skipped_count = 0
+		
+		for lead in leads:
+			# Build full_name from parts
+			full_name_parts = []
+			
+			if lead.get('first_name'):
+				full_name_parts.append(lead['first_name'].strip())
+			if lead.get('middle_name'):
+				full_name_parts.append(lead['middle_name'].strip())
+			if lead.get('last_name'):
+				full_name_parts.append(lead['last_name'].strip())
+			
+			new_full_name = " ".join(full_name_parts) if full_name_parts else ""
+			
+			# Check if update is needed
+			if lead.get('full_name') != new_full_name:
+				# Update using db.set_value to avoid triggering validations
+				frappe.db.set_value('Lead', lead['name'], 'full_name', new_full_name, update_modified=False)
+				updated_count += 1
+				
+				if updated_count % 100 == 0:
+					frappe.db.commit()
+			else:
+				skipped_count += 1
+		
+		# Final commit
+		frappe.db.commit()
+		
+		return {
+			"success": True,
+			"message": f"Successfully updated {updated_count} leads. Skipped {skipped_count} leads (already correct).",
+			"updated": updated_count,
+			"skipped": skipped_count
+		}
+		
+	except Exception as e:
+		frappe.log_error(f"Error in bulk_update_lead_full_names: {str(e)}")
+		frappe.db.rollback()
+		return {
+			"success": False,
+			"message": f"Error: {str(e)}"
+		}
