@@ -1029,7 +1029,11 @@ def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
     """,as_dict =  True)
     
     result = {}
-    result["income_till_today"]  = surgery_till_date_income[0].income_till_date if len(surgery_till_date_income) > 0 else 0 + consultations_till_date_income[0].income_till_date if len(consultations_till_date_income) > 0 else 0 + treatments_till_date_income[0].income_till_date if len(treatments_till_date_income) > 0 else 0
+    # Calculate total income from all sources
+    surgery_income_till_today = surgery_till_date_income[0].income_till_date if len(surgery_till_date_income) > 0 and surgery_till_date_income[0].income_till_date else 0
+    consultation_income_till_today = consultations_till_date_income[0].income_till_date if len(consultations_till_date_income) > 0 and consultations_till_date_income[0].income_till_date else 0
+    treatment_income_till_today = treatments_till_date_income[0].income_till_date if len(treatments_till_date_income) > 0 and treatments_till_date_income[0].income_till_date else 0
+    result["income_till_today"] = surgery_income_till_today + consultation_income_till_today + treatment_income_till_today
     match types:
         case "ALL":
             surgeries  = list(map(lambda x : {
@@ -1038,7 +1042,7 @@ def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
             }, surgeries))
             consultations = list(map(lambda x : {
                 "type" : "Consultation",
-                "total_mount" : 0,
+                "total_amount" : 0,
                 **x
             }, consultations))
             treatments = list(map(lambda x : {
@@ -1051,7 +1055,7 @@ def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
             result["slots"] = len(data)
             surgery_income = reduce(lambda acc,x:  acc + (x["total_amount"] if "total_amount" in x and x["status"] == "Paid" else 0),  surgeries_docs, 0)
             treatment_income = reduce(lambda acc,x:  acc + (x["total_amount"] if "total_amount" in x and x["status"] == "Paid" else 0),  treatments, 0)
-            consultation_income = reduce(lambda acc,x:  acc + (x["total_mount"] if "total_mount" in x and x["payment_status"] == "Paid" else 0),  consultations, 0)
+            consultation_income = reduce(lambda acc,x:  acc + (x["total_amount"] if "total_amount" in x and x["payment_status"] == "Paid" else 0),  consultations, 0)
             result["income"] =  surgery_income + treatment_income + consultation_income
         case "Surgery":
             data = list(map(lambda x : {
@@ -1104,21 +1108,35 @@ def get_surgery_data(year, month, center = "ALL"):
     start_date = datetime.strftime(start_date , "%Y-%m-%d")
     end_date = get_last_day(start_date)
     
-    filters = {}
-    if center !=  "ALL":
-        filters["center"] = center    
+    # Fetch Surgery records with full_name from Lead using SQL join
+    surgery_sql = """
+        SELECT 
+            COALESCE(l.full_name, s.patient) as name,
+            s.surgery_date as date,
+            s.center,
+            s.doctor,
+            s.contact_number,
+            s.total_amount,
+            s.status,
+            s.name as surgery_id
+        FROM `tabSurgery` s
+        LEFT JOIN `tabCosting` c ON s.patient = c.name
+        LEFT JOIN `tabLead` l ON c.patient = l.name
+        WHERE s.surgery_date BETWEEN %s AND %s
+    """
+    surgery_params = [start_date, end_date]
+    if center != "ALL":
+        surgery_sql += " AND s.center = %s"
+        surgery_params.append(center)
     
-    surgeries = frappe.db.get_list('Surgery' ,filters={
-        "surgery_date" : ["between", [start_date,end_date]],
-        **filters    
-    }, fields = ["patient as name"  ,"surgery_date as date" , "center", "doctor", "contact_number" ,"total_amount", "status" ] ,ignore_permissions=True)
+    surgeries = frappe.db.sql(surgery_sql, tuple(surgery_params), as_dict=True)
     
     count = frappe.db.sql("""
         select sum(total_amount) as income_till_date from `tabSurgery` where status = "Paid"              
     """,as_dict =  True)
     
     result = {}
-    result["income_till_today"]  = count[0].income_till_date if len(count) > 0 else 0
+    result["income_till_today"]  = count[0].income_till_date if len(count) > 0 and count[0].income_till_date else 0
     
     data = list(map(lambda x : {
                 "type" : "Surgery",
@@ -1126,7 +1144,7 @@ def get_surgery_data(year, month, center = "ALL"):
             }, surgeries))
     new_list = []
     for x in data:
-        surgery_entries = frappe.get_all("Graft Entry", filters={"parent": x["name"]}, fields=["*"],ignore_permissions=True)
+        surgery_entries = frappe.get_all("Graft Entry", filters={"parent": x["surgery_id"]}, fields=["*"],ignore_permissions=True)
         if len(surgery_entries) > 0:
             for y in surgery_entries:
                 new_list.append({
@@ -1149,21 +1167,33 @@ def get_treatment_data(year, month, center = "ALL"):
     start_date = datetime.strftime(start_date , "%Y-%m-%d")
     end_date = get_last_day(start_date)
     
-    filters = {}
-    if center !=  "ALL":
-        filters["center"] = center    
+    # Fetch Treatment records with full_name from Lead using SQL join
+    treatment_sql = """
+        SELECT 
+            COALESCE(l.full_name, t.patient) as name,
+            t.procedure_date,
+            t.center,
+            t.name as id,
+            t.total_amount,
+            t.status
+        FROM `tabTreatment` t
+        LEFT JOIN `tabCosting` c ON t.patient = c.name
+        LEFT JOIN `tabLead` l ON c.patient = l.name
+        WHERE t.procedure_date BETWEEN %s AND %s
+    """
+    treatment_params = [start_date, end_date]
+    if center != "ALL":
+        treatment_sql += " AND t.center = %s"
+        treatment_params.append(center)
     
-    treatments = frappe.db.get_list('Treatment' ,filters={
-        "procedure_date" : ["between", [start_date,end_date]],
-         **filters
-    }, fields = ["patient as name"  ,"procedure_date" , "center", "name as id", "total_amount", "status"] ,ignore_permissions=True)
+    treatments = frappe.db.sql(treatment_sql, tuple(treatment_params), as_dict=True)
     
     treatments_till_date_income = frappe.db.sql("""
         select sum(total_amount) as income_till_date from `tabTreatment` where status = "Paid"             
     """,as_dict =  True)
     
     result = {}
-    result["income_till_today"]  = treatments_till_date_income[0].income_till_date if len(treatments_till_date_income) > 0 else 0
+    result["income_till_today"]  = treatments_till_date_income[0].income_till_date if len(treatments_till_date_income) > 0 and treatments_till_date_income[0].income_till_date else 0
     
     data = list(map(lambda x : {
                 "type" : "Treatment",
@@ -1182,21 +1212,34 @@ def get_consultation_data(year, month, center = "ALL"):
     start_date = datetime.strftime(start_date , "%Y-%m-%d")
     end_date = get_last_day(start_date)
     
-    filters = {}
-    if center !=  "ALL":
-        filters["center"] = center    
+    # Fetch Consultation records with full_name from Lead using SQL join
+    consultation_sql = """
+        SELECT 
+            COALESCE(l.full_name, c.patient) as name,
+            c.date,
+            c.center,
+            c.doctor,
+            c.phone as contact_number,
+            c.name as id,
+            c.total_amount,
+            c.payment_status
+        FROM `tabConsultation` c
+        LEFT JOIN `tabLead` l ON c.patient = l.name
+        WHERE c.date BETWEEN %s AND %s
+    """
+    consultation_params = [start_date, end_date]
+    if center != "ALL":
+        consultation_sql += " AND c.center = %s"
+        consultation_params.append(center)
     
-    consultations = frappe.db.get_list('Consultation' ,filters={
-        "date" : ["between", [start_date,end_date]],
-        **filters
-    }, fields = ["patient as name"  ,"date" , "center", "doctor", "phone as contact_number", "name as id", "total_amount", "payment_status" ],ignore_permissions=True )
+    consultations = frappe.db.sql(consultation_sql, tuple(consultation_params), as_dict=True)
     
     consultations_till_date_income = frappe.db.sql("""
         select sum(total_amount) as income_till_date from `tabConsultation` where payment_status = "Paid"             
     """,as_dict =  True)
 
     result = {}
-    result["income_till_today"]  = consultations_till_date_income[0].income_till_date if len(consultations_till_date_income) > 0 else 0
+    result["income_till_today"]  = consultations_till_date_income[0].income_till_date if len(consultations_till_date_income) > 0 and consultations_till_date_income[0].income_till_date else 0
     
     data = list(map(lambda x : {
                 "type" : "Consultation",

@@ -264,11 +264,11 @@
    "read_only": 1
   },
   {
-   "fetch_from": "patient.first_name",
+   "fetch_from": "patient.full_name",
    "fieldname": "first_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "First Name"
+   "label": "Patient Name"
   }
  ],
  "index_web_pages_for_search": 1,

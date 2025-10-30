@@ -359,7 +359,7 @@ def get_data(filters: Filters) -> list[dict]:
 			"campaign_name": consultation.get("campaign_name"),
 			"mode": consultation.get("mode"),
 			"apnt_mode": consultation.get("apnt_mode"),
-			"patient_name": f'<strong><a href="/app/consultation/{quote(consultation.get("name"), safe="")}" style="color: inherit;">{consultation.get("first_name")}</a></strong>',
+			"patient_name": f'<strong><a href="/app/consultation/{quote(consultation.get("name"), safe="")}" style="color: inherit;">{consultation.get("full_name")}</a></strong>',
 			"phone_no": consultation.get("contact_number"),
 			"city": consultation.get("city"),
 			"center": consultation.get("center"),

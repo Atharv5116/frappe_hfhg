@@ -333,7 +333,7 @@ def get_data(filters) -> list[dict]:
 			"source": costing.get("lead_source"),
 			"center": costing.get("center"),
 			"technique": costing.get("technique"),
-			"patient_name": f'<strong><a href="/app/costing/{quote(costing.get("name"), safe="")}"style="color: inherit;">{costing.get("first_name")}</a></strong>',
+			"patient_name": f'<strong><a href="/app/costing/{quote(costing.get("name"), safe="")}"style="color: inherit;">{costing.get("full_name")}</a></strong>',
 			"phone_no": costing.get("contact_number"),
 			"city": costing.get("city"),
 			"executive": costing.get("executive"),

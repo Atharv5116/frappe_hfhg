@@ -449,10 +449,8 @@
   {
    "fieldname": "full_name",
    "fieldtype": "Data",
-   "hidden": 1,
    "in_global_search": 1,
-   "label": "Full Name",
-   "read_only": 1
+   "label": "Full Name"
   },
   {
    "fetch_from": "center.receptionist",
@@ -1051,5 +1049,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "full_name",
  "track_changes": 1
 }

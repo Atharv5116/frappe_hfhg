@@ -562,3 +562,59 @@ def get_dynamic_source_fields():
 		}
 	
 	return field_mapping
+
+@frappe.whitelist()
+def bulk_update_lead_full_names():
+	"""Bulk update full_name for all existing Lead records"""
+	
+	try:
+		# Get all leads
+		leads = frappe.get_all('Lead', 
+			fields=['name', 'first_name', 'middle_name', 'last_name', 'full_name'],
+			limit_page_length=0
+		)
+		
+		updated_count = 0
+		skipped_count = 0
+		
+		for lead in leads:
+			# Build full_name from parts
+			full_name_parts = []
+			
+			if lead.get('first_name'):
+				full_name_parts.append(lead['first_name'].strip())
+			if lead.get('middle_name'):
+				full_name_parts.append(lead['middle_name'].strip())
+			if lead.get('last_name'):
+				full_name_parts.append(lead['last_name'].strip())
+			
+			new_full_name = " ".join(full_name_parts) if full_name_parts else ""
+			
+			# Check if update is needed
+			if lead.get('full_name') != new_full_name:
+				# Update using db.set_value to avoid triggering validations
+				frappe.db.set_value('Lead', lead['name'], 'full_name', new_full_name, update_modified=False)
+				updated_count += 1
+				
+				if updated_count % 100 == 0:
+					frappe.db.commit()
+			else:
+				skipped_count += 1
+		
+		# Final commit
+		frappe.db.commit()
+		
+		return {
+			"success": True,
+			"message": f"Successfully updated {updated_count} leads. Skipped {skipped_count} leads (already correct).",
+			"updated": updated_count,
+			"skipped": skipped_count
+		}
+		
+	except Exception as e:
+		frappe.log_error(f"Error in bulk_update_lead_full_names: {str(e)}")
+		frappe.db.rollback()
+		return {
+			"success": False,
+			"message": f"Error: {str(e)}"
+		}

@@ -53,6 +53,12 @@ def get_columns() -> list[dict]:
 			"width": 150,
 		},
 		{
+			"label": _("Patient Name"),
+			"fieldtype": "Data",
+			"fieldname": "patient_name",
+			"width": 200,
+		},
+		{
 			"label": _("Lead"),
 			"fieldtype": "Link",
 			"fieldname": "lead",
@@ -239,7 +245,8 @@ def get_data(filters):
     query = """
         SELECT 
             rm.name AS reminder_id, 
-            l.name AS lead, 
+            l.name AS lead,
+            l.full_name,
             rm.date, 
             rm.status, 
             rm.executive,
@@ -349,6 +356,7 @@ def get_data(filters):
     for row in rows:
         new_row = {
             "date": row.date,
+            "patient_name": row.full_name,
             "executive": row.executive,
             "description": row.description,
             "status": row.status,

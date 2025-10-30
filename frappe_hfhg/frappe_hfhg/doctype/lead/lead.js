@@ -17,6 +17,9 @@ let donor_areas = ["1", "2,3 & more", "Total"];
 
 frappe.ui.form.on("Lead", {
   onload(frm) {
+    // Update full_name on load if it's empty or outdated
+    update_full_name(frm);
+    
     if (frm.doc.contact_number && frm.doc.contact_number.length > 10) {
       frm.doc.whatsapp_no = frm.doc.contact_number;
       fetch_and_inject_custom_html(frm);
@@ -27,6 +30,15 @@ frappe.ui.form.on("Lead", {
       frm.doc.whatsapp_no = frm.doc.contact_number;
       fetch_and_inject_custom_html(frm);
     }
+  },
+  first_name: function(frm) {
+    update_full_name(frm);
+  },
+  middle_name: function(frm) {
+    update_full_name(frm);
+  },
+  last_name: function(frm) {
+    update_full_name(frm);
   },
   refresh(frm) {
     // showWhatsAppTab()
@@ -64,7 +76,7 @@ frappe.ui.form.on("Lead", {
 
 
     if (!frm.is_new()) {
-      frm.add_custom_button("Update Image", function () {
+      frm.add_custom_button("Upload Lead Image", function () {
         console.log("Upload Lead Image button clicked!");
         console.log("Form doctype:", frm.doctype);
         console.log("Form doc name:", frm.doc.name);
@@ -76,6 +88,52 @@ frappe.ui.form.on("Lead", {
           frappe.msgprint("Error: " + e.message);
         }
       });
+      
+      // Add bulk update button (only for System Manager)
+      if (frappe.user_roles.includes('System Manager')) {
+        console.log("Update All Full Names button added");
+        frm.add_custom_button("Update All Full Names", function () {
+          frappe.confirm(
+            'This will update the Full Name field for all existing Lead records. Continue?',
+            function() {
+              // User confirmed, proceed
+              frappe.call({
+                method: 'frappe_hfhg.frappe_hfhg.doctype.lead.lead.bulk_update_lead_full_names',
+                callback: function(r) {
+                  if (r.message && r.message.success) {
+                    frappe.show_alert({
+                      message: r.message.message,
+                      indicator: 'green'
+                    }, 10);
+                    frappe.msgprint({
+                      title: __('Bulk Update Complete'),
+                      message: __(`
+                        <strong>Results:</strong><br>
+                        ✅ Updated: ${r.message.updated} leads<br>
+                        ⏭️ Skipped: ${r.message.skipped} leads (already correct)
+                      `),
+                      indicator: 'green'
+                    });
+                  } else {
+                    frappe.msgprint({
+                      title: __('Error'),
+                      message: r.message ? r.message.message : 'Failed to update leads',
+                      indicator: 'red'
+                    });
+                  }
+                },
+                error: function(r) {
+                  frappe.msgprint({
+                    title: __('Error'),
+                    message: __('An error occurred while updating leads'),
+                    indicator: 'red'
+                  });
+                }
+              });
+            }
+          );
+        }).addClass('btn-warning');
+      }
     }
 
     if (!frm.is_new()) {
@@ -986,29 +1044,12 @@ frappe.call({
     // Load dynamic source fields and setup conditional logic
     load_dynamic_source_fields(frm);
 
-    // Load reference surgery info if source is References and source_reference is filled
-    if (frm.doc.source === "References" && frm.doc.source_reference) {
-      fetch_reference_surgery_info(frm);
-    }
-
     hideSidebarToggle();
   },
 
   source(frm) {
     // Handle dynamic source field visibility
     handle_dynamic_source_fields(frm);
-  },
-  
-  source_reference(frm) {
-    // Fetch and display surgery information when patient name/number is entered
-    console.log("source_reference triggered:", frm.doc.source_reference, "source:", frm.doc.source);
-    if (frm.doc.source_reference && frm.doc.source === "References") {
-      fetch_reference_surgery_info(frm);
-    } else {
-      // Clear the HTML field if no reference is entered
-      frm.set_df_property("reference_surgery_info", "options", "");
-      frm.set_df_property("reference_surgery_info", "hidden", 1);
-    }
   },
   
   executive(frm) {
@@ -1582,6 +1623,7 @@ function handle_dynamic_source_fields(frm) {
         // Hide the dynamic field if source doesn't have additional field enabled
         frm.set_df_property("dynamic_source_name", "hidden", 1);
     }
+
 }
 
 // Fetch surgery information for reference patient
@@ -1762,4 +1804,25 @@ function display_surgery_results(surgeries, patient_name, lead_data, frm) {
                 frm.set_df_property("reference_surgery_info", "options", "");
                 frm.set_df_property("reference_surgery_info", "hidden", 1);
             }
+}
+
+// Helper function to update full_name when first/middle/last name changes
+function update_full_name(frm) {
+    let full_name_parts = [];
+    
+    if (frm.doc.first_name) {
+        full_name_parts.push(frm.doc.first_name.trim());
+    }
+    
+    if (frm.doc.middle_name) {
+        full_name_parts.push(frm.doc.middle_name.trim());
+    }
+    
+    if (frm.doc.last_name) {
+        full_name_parts.push(frm.doc.last_name.trim());
+    }
+    
+    // Join the parts with space and set to full_name field
+    frm.set_value('full_name', full_name_parts.join(' '));
+
 }
