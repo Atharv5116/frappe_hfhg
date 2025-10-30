@@ -312,7 +312,7 @@ def get_data(filters: Filters) -> list[dict]:
             "year": lead.get("created_on").strftime("%Y"),
             "created_on": lead.get("created_on"),
             "source": lead.get("source"),
-            "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("first_name")}</a></strong>',
+            "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("full_name")}</a></strong>',
             "phone_no": lead.get("contact_number"),
             "city": lead.get("city"),
             "center": lead.get("center"),

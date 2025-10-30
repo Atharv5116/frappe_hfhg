@@ -249,7 +249,7 @@ def get_data(filters: Filters) -> list[dict]:
         row = {
             "campaign_name": lead.get("campaign_name"),
             "ad_name": lead.get("ad_name"),
-            "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("first_name")}</a></strong>',
+            "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("full_name")}</a></strong>',
             "phone_no": lead.get("contact_number"),
             "status": lead.get("status"),
             "executive": lead.get("executive"),

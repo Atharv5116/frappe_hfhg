@@ -554,7 +554,7 @@ def get_data(filters) -> list[dict]:
 			"campaign_name": surgery.get("campaign_name"),
 			"ad_name": surgery.get("ad_name"),
 			"center": surgery.get("center"),
-			"patient_name": f'<strong><a href="/app/surgery/{quote(surgery.get("name"), safe="")}" style="color: inherit;">{surgery.get("first_name")}</a></strong>',
+			"patient_name": f'<strong><a href="/app/surgery/{quote(surgery.get("name"), safe="")}" style="color: inherit;">{surgery.get("full_name")}</a></strong>',
 			"phone_no": surgery.get("contact_number"),
 			"city": surgery.get("city"),
 			"technique": surgery.get("technique"),

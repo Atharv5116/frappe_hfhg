@@ -221,7 +221,7 @@ def get_data(filters) -> list[dict]:
 	rows = []
 	query = """
         SELECT
-		    c.*, l.mode, l.status as lead_status, l.campaign_name, l.ad_name, l.imported_source,
+		    c.*, l.mode, l.status as lead_status, l.campaign_name, l.ad_name, l.imported_source, l.full_name,
 			latest_consultation.date AS consultation_date,
 		    latest_consultation.status AS consultation_status, 
 		    latest_surgery.surgery_date,
@@ -341,7 +341,7 @@ def get_data(filters) -> list[dict]:
 			"source": surgery.get("lead_source"),
 			"imported_source": surgery.get("imported_source"),
 			"center": surgery.get("center"),
-			"patient_name": f'<strong><a href="/app/lead/{quote(surgery.get("patient"), safe="")}"style="color: inherit;">{surgery.get("first_name")}</a></strong>',
+			"patient_name": f'<strong><a href="/app/costing/{quote(surgery.get("name"), safe="")}"style="color: inherit;">{surgery.get("full_name")}</a></strong>',
 			"phone_no": surgery.get("contact_number"),
 			"city": surgery.get("city"),
 			"executive": surgery.get("executive"),
