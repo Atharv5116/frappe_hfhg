@@ -43,7 +43,15 @@ frappe.ui.form.on("Surgery", {
           show_discount_dialog(frm);
         });
       }
-      if (!["Cancelled", "Completed"].includes(frm.doc.surgery_status)) {
+      
+      // Check if surgery date has passed AND pending_amount is 0
+      const surgery_date_passed = frm.doc.surgery_date && 
+        frappe.datetime.str_to_obj(frm.doc.surgery_date) < 
+        frappe.datetime.str_to_obj(frappe.datetime.get_today());
+      const pending_amount = frm.doc.pending_amount || 0;
+      const should_hide_buttons = surgery_date_passed && pending_amount === 0;
+      
+      if (!["Cancelled", "Completed"].includes(frm.doc.surgery_status) && !should_hide_buttons) {
         frm.add_custom_button(__("Cancel Surgery"), function () {
           let d = new frappe.ui.Dialog({
             title: "Cancel Surgery",
@@ -112,7 +120,8 @@ frappe.ui.form.on("Surgery", {
         });
       }
 
-      frm.add_custom_button(__("Postpone Surgery"), function () {
+      if (!should_hide_buttons) {
+        frm.add_custom_button(__("Postpone Surgery"), function () {
         let existing_entries = (frm.doc.postpone_surgery || []).map((row) => {
           return {
             postpone_date: row.postpone_date,
@@ -199,6 +208,7 @@ frappe.ui.form.on("Surgery", {
 
         d.show();
       });
+      }
 
       frm.set_df_property("patient", "read_only", 1);
       setTimeout(() => {
