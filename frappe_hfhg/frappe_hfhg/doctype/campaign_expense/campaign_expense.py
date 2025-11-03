@@ -42,14 +42,19 @@ class CampaignExpense(Document):
             # Read Excel file
             df = pd.read_excel(full_file_path)
             
-            # Expected columns: 'campaign name ', 'ad name', 'cost', 'gst', 'total '
+            # Strip spaces from column names for easier matching
+            df.columns = df.columns.str.strip()
+            
+            # Expected columns: Campaign name, Ad name, Cost, GST amount, Total amount
             created_count = 0
             
             for index, row in df.iterrows():
                 try:
-                    # Get or create Meta Ads entry
-                    ad_name = str(row.get('ad name', '')).strip()
-                    campaign_name = str(row.get('campaign name ', '')).strip()
+                    # Get ad_name from 'Ad name' column
+                    ad_name = str(row.get('Ad name', '')).strip()
+                    
+                    # Get campaign from 'Campaign name' column
+                    campaign_name = str(row.get('Campaign name', '')).strip()
                     
                     if not ad_name:
                         continue
@@ -60,9 +65,11 @@ class CampaignExpense(Document):
                     expense.ad_name = ad_name
                     expense.campaign = campaign_name
                     expense.date = self.date or frappe.utils.today()
-                    expense.amount = float(row.get('cost', 0))
-                    expense.gst_amount = float(row.get('gst', 0))
-                    expense.total_amount = float(row.get('total ', 0))
+                    
+                    # Get amounts from exact column names
+                    expense.amount = float(row.get('Cost', 0))
+                    expense.gst_amount = float(row.get('GST amount', 0))
+                    expense.total_amount = float(row.get('Total amount', 0))
                     expense.insert(ignore_permissions=True)
                     
                     created_count += 1
