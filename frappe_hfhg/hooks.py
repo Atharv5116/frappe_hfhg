@@ -131,6 +131,7 @@ doc_events = {
         # "after_insert": "frappe_hfhg.tasks.whatsapp_message_notification"
     },
     "Lead": {
+        "before_insert": ["frappe_hfhg.api.set_meta_lead_source"],
         "after_insert": ["frappe_hfhg.api.after_insert_lead_logs"],
     }
 }

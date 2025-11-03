@@ -2797,3 +2797,78 @@ def get_full_image_url(image_path):
     else:
         # For public files, just prepend site URL
         return frappe.utils.get_url(image_path)
+
+
+def set_meta_lead_source(doc, method=None):
+    """
+    Hook function to set source='Meta' and subsource='Facebook'/'Instagram' 
+    for leads imported from Meta webhooks ONLY.
+    
+    This runs before a Lead is inserted.
+    
+    Safety checks to ensure ONLY Meta webhook leads are processed:
+    1. Lead has ad_name (Meta Ads reference)
+    2. NOT an imported lead (imported_source field is empty)
+    3. Meta Webhook Lead Log exists with this ad_id
+    4. Webhook log has platform data (Facebook/Instagram)
+    5. Webhook log source is "Webhook" (from Meta, not manual)
+    
+    Note: We don't check if source is already set, because Meta Lead Form 
+    mappings may set it to "Facebook" or "Instagram" as default. We need to 
+    override it to "Meta" for proper tracking.
+    """
+    # Safety Check 1: Must have ad_name
+    if not doc.ad_name:
+        return
+    
+    # Safety Check 2: Not a CSV/bulk imported lead
+    if doc.imported_source:
+        return
+    
+    try:
+        # Safety Check 4, 5, 6: Verify Meta webhook log exists with platform
+        webhook_log = frappe.get_all(
+            "Meta Webhook Lead Logs",
+            filters={
+                "ad_id": doc.ad_name,
+                "platform": ["is", "set"],  # Must have platform field populated
+                "source": "Webhook",  # Must be from webhook (not manual entry)
+                "lead_doc_reference": ["is", "not set"]  # Lead hasn't been created yet
+            },
+            fields=["platform", "leadgen_id", "name"],
+            order_by="received_time DESC",
+            limit_page_length=1
+        )
+        
+        if webhook_log and webhook_log[0].get("platform"):
+            platform = webhook_log[0].get("platform")
+            
+            # Create "Meta" source if it doesn't exist
+            meta_source = frappe.db.exists("Source", "Meta")
+            if not meta_source:
+                try:
+                    meta_source_doc = frappe.new_doc("Source")
+                    meta_source_doc.source_name = "Meta"
+                    meta_source_doc.insert(ignore_permissions=True)
+                    frappe.db.commit()
+                    frappe.logger().info("Created 'Meta' source in Source doctype")
+                except Exception as e:
+                    frappe.logger().error(f"Error creating Meta source: {str(e)}")
+            
+            # Set source to "Meta"
+            doc.source = "Meta"
+            
+            # Set subsource based on platform
+            if platform in ['Facebook', 'Instagram']:
+                doc.subsource = platform
+            elif platform == 'fb':
+                doc.subsource = 'Facebook'
+            elif platform == 'ig':
+                doc.subsource = 'Instagram'
+            
+            frappe.logger().info(f"Set Lead source='Meta' and subsource='{doc.subsource}' based on platform '{platform}'")
+            
+    except Exception as e:
+        frappe.logger().error(f"Error in set_meta_lead_source: {str(e)}")
+        # Don't fail the lead creation if this fails
+        pass
