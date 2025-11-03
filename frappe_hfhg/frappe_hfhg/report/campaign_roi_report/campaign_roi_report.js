@@ -1,7 +1,7 @@
 // Copyright (c) 2025, redsoft and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Campaign ROI Report"] = {
+frappe.query_reports["Ad Expense Report"] = {
   onload: async function (report) {
     updateSummary(report);
     
