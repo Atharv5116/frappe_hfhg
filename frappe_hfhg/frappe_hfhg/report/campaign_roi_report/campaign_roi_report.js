@@ -37,32 +37,21 @@ frappe.query_reports["Campaign ROI Report"] = {
       default: new Date(), // Today
     },
     {
-      fieldname: "source",
-      label: __("Source"),
-      fieldtype: "Select",
-      options: [
-        "",
-        "Website",
-        "Website Form",
-        "Google Adword",
-        "Google GMB",
-        "Facebook",
-        "Instagram",
-        "Hoarding",
-        "References",
-        "Youtube",
-        "Youtuber",
-        "Quora",
-        "Pinterest",
-        "Twitter",
-        "Just dial",
-        "Imported Data",
-      ],
+      fieldname: "ad_name",
+      label: __("Ad Name "),
+      fieldtype: "Data",
     },
     {
-      fieldname: "campaign_name",
-      label: __("Campaign Name"),
-      fieldtype: "Data",
+      fieldname: "source",
+      label: __("Select Source Revenue"),
+      fieldtype: "Link",
+      options: "Source",
+      get_query: function() {
+        return {
+          filters: {},
+          page_length: 9999, // Show all sources
+        };
+      },
     },
   ],
 };
@@ -80,37 +69,33 @@ const updateSummary = function (report) {
         
         // Calculate totals
         let total_expense = 0;
-        let total_income = 0;
+        let total_source_revenue = 0;
+        let total_lifetime_revenue = 0;
+        let total_period_revenue = 0;
         let total_profit = 0;
-        let total_source_income = 0;
         
         data.forEach(function(row) {
           total_expense += row.total_expense || 0;
-          total_income += row.total_income || 0;
+          total_source_revenue += row.source_revenue || 0;
+          total_lifetime_revenue += row.lifetime_revenue || 0;
+          total_period_revenue += row.period_revenue || 0;
           total_profit += row.net_profit || 0;
-          if (row.source_income !== undefined) {
-            total_source_income += row.source_income || 0;
-          }
         });
         
         let avg_roi = 0;
         if (total_expense > 0) {
-          avg_roi = ((total_income - total_expense) / total_expense) * 100;
+          avg_roi = ((total_period_revenue - total_expense) / total_expense) * 100;
         }
         
         // Remove existing summary
         report.page.wrapper.find(".campaign-roi-summary").remove();
-        
-        // Get filter values
-        let filters = report.get_values();
-        let source = filters.source;
         
         // Build summary HTML
         let summary_parts = [];
         
         summary_parts.push(`
           <h5 style="margin: 0;">
-            <strong>Campaigns:</strong> ${data.length}
+            <strong>Ads:</strong> ${data.length}
           </h5>
         `);
         
@@ -121,16 +106,24 @@ const updateSummary = function (report) {
         `);
         
         summary_parts.push(`
-          <h5 style="margin: 0; color: #5cb85c;">
-            <strong>Total Income:</strong> ₹ ${frappe.format(total_income, {fieldtype: 'Float', precision: 2})}
+          <h5 style="margin: 0; color: #0d6efd;">
+            <strong>Lifetime Revenue:</strong> ₹ ${frappe.format(total_lifetime_revenue, {fieldtype: 'Float', precision: 2})}
           </h5>
         `);
         
-        // If a source filter is selected, show the source-specific income
-        if (source && source.trim()) {
+        summary_parts.push(`
+          <h5 style="margin: 0; color: #5cb85c;">
+            <strong>Period Revenue:</strong> ₹ ${frappe.format(total_period_revenue, {fieldtype: 'Float', precision: 2})}
+          </h5>
+        `);
+        
+        // Show source revenue total if source filter is selected
+        let filters = report.get_values();
+        let selected_source = filters.source;
+        if (selected_source && selected_source.trim()) {
           summary_parts.push(`
-            <h5 style="margin: 0; color: #0d6efd;">
-              <strong>${source}:</strong> ₹ ${frappe.format(total_source_income, {fieldtype: 'Float', precision: 2})}
+            <h5 style="margin: 0; color: #17a2b8;">
+              <strong>${selected_source} Revenue:</strong> ₹ ${frappe.format(total_source_revenue, {fieldtype: 'Float', precision: 2})}
             </h5>
           `);
         }

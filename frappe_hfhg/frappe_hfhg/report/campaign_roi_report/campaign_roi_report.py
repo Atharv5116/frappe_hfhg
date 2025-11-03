@@ -22,10 +22,17 @@ def execute(filters=None) -> tuple:
 def get_columns(filters: Filters) -> list[dict]:
     columns: list[dict] = [
         {
-            "label": _("Campaign Name"),
+            "label": _("Ad Name"),
             "fieldtype": "Data",
-            "fieldname": "campaign_name",
-            "width": 250,
+            "fieldname": "ad_name",
+            "width": 200,
+        },
+        {
+            "label": _("Source Revenue (₹)"),
+            "fieldtype": "Float",
+            "fieldname": "source_revenue",
+            "width": 150,
+            "precision": 2,
         },
         {
             "label": _("Total Expense (₹)"),
@@ -35,26 +42,19 @@ def get_columns(filters: Filters) -> list[dict]:
             "precision": 2,
         },
         {
-            "label": _("Total Income (₹)"),
+            "label": _("Lifetime Revenue (₹)"),
             "fieldtype": "Float",
-            "fieldname": "total_income",
+            "fieldname": "lifetime_revenue",
+            "width": 170,
+            "precision": 2,
+        },
+        {
+            "label": _("Period Revenue (₹)"),
+            "fieldtype": "Float",
+            "fieldname": "period_revenue",
             "width": 150,
             "precision": 2,
         },
-    ]
-
-    # If a source filter is selected, add a dynamic column for that source's income
-    source = (filters.get("source") or "").strip() if isinstance(filters, dict) else ""
-    if source:
-        columns.append({
-            "label": _(f"Income - {source} (₹)"),
-            "fieldtype": "Float",
-            "fieldname": "source_income",
-            "width": 170,
-            "precision": 2,
-        })
-
-    columns.extend([
         {
             "label": _("Net Profit/Loss (₹)"),
             "fieldtype": "Float",
@@ -68,71 +68,97 @@ def get_columns(filters: Filters) -> list[dict]:
             "fieldname": "roi_percent",
             "width": 120,
         },
-    ])
+    ]
 
     return columns
 
 def get_data(filters: Filters) -> list[dict]:
-    # Get all campaigns that have either expenses or leads in the date range
-    campaigns = get_campaigns_in_range(filters)
+    # Get all ads that have either expenses or revenue
+    ads_data = get_ads_with_activity(filters)
+    
+    # Get the selected source filter
+    selected_source = (filters.get("source") or "").strip()
     
     rows = []
-    for campaign in campaigns:
-        campaign_name = campaign.get("campaign_name")
+    # Group ads by ad_name only (not by source)
+    ad_names = list(set([ad.get("ad_name") for ad in ads_data]))
+    
+    for ad_name in ad_names:
+        # Get total expenses for this ad (within date range)
+        total_expense = get_ad_expenses(filters, ad_name)
         
-        # Get total expenses for this campaign
-        total_expense = get_campaign_expenses(filters, campaign_name)
+        # Always get revenue from ALL sources (regardless of source filter)
+        lifetime_revenue = get_ad_revenue(filters, ad_name, None, lifetime=True)
+        period_revenue = get_ad_revenue(filters, ad_name, None, lifetime=False)
         
-        # Get total income for this campaign (ALL sources)
-        total_income = get_campaign_income_for_source(filters, campaign_name, source=None)
-
-        # If a source is selected, get income only from that source as a separate column
-        source = (filters.get("source") or "").strip()
-        source_income = None
-        if source:
-            source_income = get_campaign_income_for_source(filters, campaign_name, source)
+        # Get revenue from selected source (if any) - for the Source Revenue column
+        # This shows revenue ONLY from that specific source
+        if selected_source:
+            # Get revenue from this specific source (in date range)
+            source_revenue = get_ad_revenue(filters, ad_name, selected_source, lifetime=False)
+        else:
+            # No source selected - source revenue column is blank (0)
+            source_revenue = 0
         
-        net_profit = total_income - total_expense
+        # Net profit is based on period revenue from all sources
+        net_profit = period_revenue - total_expense
         
-        # Calculate ROI percentage
+        # Calculate ROI percentage based on period revenue from all sources
         roi_percent = 0
         if total_expense > 0:
-            roi_percent = ((total_income - total_expense) / total_expense) * 100
+            roi_percent = ((period_revenue - total_expense) / total_expense) * 100
         
         row = {
-            "campaign_name": campaign_name,
+            "ad_name": ad_name,
+            "source_revenue": source_revenue,
             "total_expense": total_expense,
-            "total_income": total_income,
+            "lifetime_revenue": lifetime_revenue,
+            "period_revenue": period_revenue,
             "net_profit": net_profit,
             "roi_percent": roi_percent,
         }
-
-        if source_income is not None:
-            row["source_income"] = source_income
         rows.append(row)
     
     return rows
 
-def get_campaigns_in_range(filters: Filters) -> list[dict]:
-    """Get all unique campaigns that have activity in the date range"""
+def get_ads_with_activity(filters: Filters) -> list[dict]:
+    """Get all unique ads that have either expenses or revenue, grouped by source"""
     query = """
-        SELECT DISTINCT campaign_name
+        SELECT DISTINCT ad_name, source
         FROM (
-            SELECT l.campaign_name
-            FROM `tabLead` l
-            WHERE l.campaign_name IS NOT NULL 
-            AND l.campaign_name != ''
-            AND l.created_on BETWEEN %(from_date)s AND %(to_date)s
+            -- Ads from Campaign Expense
+            SELECT DISTINCT ce.ad_name, NULL as source
+            FROM `tabCampaign Expense` ce
+            WHERE ce.ad_name IS NOT NULL 
+            AND ce.ad_name != ''
+            AND ce.date BETWEEN %(from_date)s AND %(to_date)s
             
             UNION
             
-            SELECT DISTINCT ce.campaign as campaign_name
-            FROM `tabCampaign Expense` ce
-            WHERE ce.date BETWEEN %(from_date)s AND %(to_date)s
-            AND ce.campaign IS NOT NULL
-            AND ce.campaign != ''
-        ) AS campaigns
-        ORDER BY campaign_name
+            -- Ads from Leads (that have payments)
+            SELECT DISTINCT l.ad_name, l.source
+            FROM `tabLead` l
+            INNER JOIN (
+                -- Leads with payments via Costing
+                SELECT DISTINCT c.patient
+                FROM `tabCosting` c
+                INNER JOIN `tabPayment` p ON p.patient = c.name
+                WHERE p.type = 'Payment'
+                
+                UNION
+                
+                -- Leads with payments via Surgery
+                SELECT DISTINCT c.patient
+                FROM `tabSurgery` s
+                INNER JOIN `tabCosting` c ON s.patient = c.name
+                INNER JOIN `tabPayment` p ON p.patient = s.name
+                WHERE p.type = 'Payment'
+            ) AS leads_with_payments ON l.name = leads_with_payments.patient
+            WHERE l.ad_name IS NOT NULL 
+            AND l.ad_name != ''
+        ) AS ads_activity
+        WHERE ad_name IS NOT NULL AND ad_name != ''
+        ORDER BY ad_name, source
     """
     
     params = {
@@ -140,32 +166,78 @@ def get_campaigns_in_range(filters: Filters) -> list[dict]:
         "to_date": filters.get("to_date"),
     }
     
-    campaigns = frappe.db.sql(query, params, as_dict=True)
-    return campaigns
+    # Apply ad name filter if provided
+    ad_name_filter = (filters.get("ad_name") or "").strip()
+    if ad_name_filter:
+        # Add ad name filter to WHERE clause
+        query = query.replace(
+            "WHERE ad_name IS NOT NULL AND ad_name != ''",
+            "WHERE ad_name IS NOT NULL AND ad_name != '' AND ad_name LIKE %(ad_name_filter)s"
+        )
+        params["ad_name_filter"] = f"%{ad_name_filter}%"
+    
+    ads = frappe.db.sql(query, params, as_dict=True)
+    
+    # Filter: only keep ads that have expense OR revenue WITHIN THE SELECTED DATE RANGE
+    # The source filter should NOT affect which ads are displayed - it only affects the Source Revenue column
+    filtered_ads = []
+    seen_ad_names = set()
+    
+    for ad_info in ads:
+        ad_name = ad_info.get("ad_name")
+        
+        # Only process each ad once (not per source)
+        if ad_name in seen_ad_names:
+            continue
+        seen_ad_names.add(ad_name)
+        
+        # Check if ad has expense within date range
+        has_expense = get_ad_expenses(filters, ad_name) > 0
+        
+        # ALWAYS check if ad has revenue from ANY source (regardless of source filter)
+        # The source filter should only affect the Source Revenue column, not which ads appear
+        has_revenue = get_ad_revenue(filters, ad_name, None, lifetime=False) > 0
+        
+        if has_expense or has_revenue:
+            filtered_ads.append(ad_info)
+    
+    return filtered_ads
 
-def get_campaign_expenses(filters: Filters, campaign_name: str) -> float:
-    """Get total expenses for a specific campaign"""
+def get_ad_expenses(filters: Filters, ad_name: str) -> float:
+    """Get total expenses for a specific ad within the date range"""
     query = """
         SELECT COALESCE(SUM(CAST(ce.total_amount AS DECIMAL(10,2))), 0) as total_expense
         FROM `tabCampaign Expense` ce
         WHERE ce.date BETWEEN %(from_date)s AND %(to_date)s
-        AND ce.campaign = %(campaign_name)s
+        AND ce.ad_name = %(ad_name)s
     """
     
     params = {
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
-        "campaign_name": campaign_name,
+        "ad_name": ad_name,
     }
     
     result = frappe.db.sql(query, params, as_dict=True)
     return float(result[0].get("total_expense", 0)) if result else 0.0
 
-def get_campaign_income_for_source(filters: Filters, campaign_name: str, source: str | None) -> float:
-    """Get income for a specific campaign. If source is provided, filter by that source; otherwise sum all sources."""
+def get_ad_revenue(filters: Filters, ad_name: str, source: str | None, lifetime: bool = False) -> float:
+    """Get revenue for a specific ad and source.
+    
+    Args:
+        filters: Report filters
+        ad_name: The ad name
+        source: The source (can be None for all sources)
+        lifetime: If True, get all-time revenue. If False, get revenue within date range.
+    """
+    
+    # Build the date condition
+    date_condition = ""
+    if not lifetime:
+        date_condition = "AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s"
     
     # Single unified query to get all payments correctly
-    query = """
+    query = f"""
         SELECT 
             COALESCE(SUM(
                 CASE 
@@ -173,26 +245,26 @@ def get_campaign_income_for_source(filters: Filters, campaign_name: str, source:
                     THEN CAST(p.total_amount_received AS DECIMAL(10,2))
                     ELSE 0
                 END
-            ), 0) as income
+            ), 0) as revenue
         FROM `tabPayment` p
         INNER JOIN (
             -- Payments via Costing
-            SELECT c.name as payment_patient, l.source
+            SELECT c.name as payment_patient, l.source, l.ad_name
             FROM `tabCosting` c
             INNER JOIN `tabLead` l ON c.patient = l.name
-            WHERE l.campaign_name = %(campaign_name)s
+            WHERE l.ad_name = %(ad_name)s
             
             UNION ALL
             
             -- Payments via Surgery
-            SELECT s.name as payment_patient, l.source
+            SELECT s.name as payment_patient, l.source, l.ad_name
             FROM `tabSurgery` s
             INNER JOIN `tabCosting` c ON s.patient = c.name
             INNER JOIN `tabLead` l ON c.patient = l.name
-            WHERE l.campaign_name = %(campaign_name)s
+            WHERE l.ad_name = %(ad_name)s
         ) AS lead_data ON p.patient = lead_data.payment_patient
-        WHERE p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
-        AND p.type = 'Payment'
+        WHERE p.type = 'Payment'
+        {date_condition}
     """
     
     # Add source filter if specified (ignore empty strings)
@@ -200,10 +272,12 @@ def get_campaign_income_for_source(filters: Filters, campaign_name: str, source:
         query += " AND lead_data.source = %(source)s"
     
     params = {
-        "from_date": filters.get("from_date"),
-        "to_date": filters.get("to_date"),
-        "campaign_name": campaign_name,
+        "ad_name": ad_name,
     }
+    
+    if not lifetime:
+        params["from_date"] = filters.get("from_date")
+        params["to_date"] = filters.get("to_date")
     
     if source and source.strip():
         params["source"] = source.strip()
@@ -211,4 +285,4 @@ def get_campaign_income_for_source(filters: Filters, campaign_name: str, source:
     # Execute query
     result = frappe.db.sql(query, params, as_dict=True)
     
-    return float(result[0].get("income", 0)) if result else 0.0
+    return float(result[0].get("revenue", 0)) if result else 0.0
