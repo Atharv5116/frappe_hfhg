@@ -13,11 +13,11 @@
  "modified": "2025-10-31 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
- "name": "Campaign ROI Report",
+ "name": "Ad Expense Report",
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Lead",
- "report_name": "Campaign ROI Report",
+ "report_name": "Ad Expense Report",
  "report_type": "Script Report",
  "roles": [
   {
