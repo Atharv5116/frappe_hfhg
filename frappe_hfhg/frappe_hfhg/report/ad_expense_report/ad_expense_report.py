@@ -23,8 +23,9 @@ def get_columns(filters: Filters) -> list[dict]:
     columns: list[dict] = [
         {
             "label": _("Ad Name"),
-            "fieldtype": "Data",
+            "fieldtype": "Link",
             "fieldname": "ad_name",
+            "options": "Meta Ads",
             "width": 200,
         },
         {
