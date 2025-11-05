@@ -16,6 +16,14 @@ let scalp_areas = [
 let donor_areas = ["1", "2,3 & more", "Total"];
 
 frappe.ui.form.on("Lead", {
+  setup(frm) {
+    // Set custom query for executive field to show 50 records
+    frm.set_query("executive", function() {
+      return {
+        page_length: 50
+      };
+    });
+  },
   onload(frm) {
     // Update full_name on load if it's empty or outdated
     update_full_name(frm);

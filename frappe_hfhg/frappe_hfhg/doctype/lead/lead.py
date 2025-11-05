@@ -326,6 +326,10 @@ class Lead(Document):
 				    })
 			assignes_list = [x.owner for x in assignes]
 			
+			# Sync executive change to duplicate leads (if this is an original lead)
+			if old_doc and old_doc.executive != self.executive and self.status != "Duplicate Lead":
+				sync_executive_to_duplicates(self.name)
+			
 			costing_exists = frappe.db.exists("Costing", {"patient": self.name})
 			if costing_exists:
 				costing = frappe.get_doc('Costing', {"patient": self.name})
@@ -435,7 +439,6 @@ class Lead(Document):
 						set_permission("File", attachment.name, executive.email, "read")
 				frappe.db.commit()
 
-
 	def autoname(self):
 		fullname = self.first_name
 		if self.middle_name:
@@ -544,6 +547,11 @@ def get_source_list():
 	return frappe.get_all("Source", fields=["name"], order_by="name asc", limit_page_length=0)
 
 @frappe.whitelist()
+def get_executive_list():
+	"""Return all Executive records with limit of 50 for the executive field dropdown"""
+	return frappe.get_all("Executive", fields=["name"], order_by="name asc", limit_page_length=50)
+
+@frappe.whitelist()
 def get_dynamic_source_fields():
 	"""Return Source records that have show_additional_field checked"""
 	sources = frappe.get_all("Source", 
@@ -562,3 +570,106 @@ def get_dynamic_source_fields():
 		}
 	
 	return field_mapping
+
+@frappe.whitelist()
+def sync_executive_to_duplicates(lead_name):
+	"""
+	Sync executive changes from original lead to all duplicate leads.
+	Can be called from Lead.on_update() or manually.
+	
+	Args:
+		lead_name: Name of the original lead
+	"""
+	try:
+		lead = frappe.get_doc("Lead", lead_name)
+		
+		# Only proceed if this is not a duplicate lead
+		if lead.status == "Duplicate Lead":
+			return
+		
+		# Find all duplicate leads with same contact number
+		duplicate_leads = frappe.get_all(
+			"Lead",
+			filters={
+				"contact_number": lead.contact_number,
+				"status": "Duplicate Lead"
+			},
+			fields=["name", "executive"]
+		)
+		
+		# Also check alternative number
+		if lead.alternative_number:
+			alt_duplicates = frappe.get_all(
+				"Lead",
+				filters={
+					"contact_number": lead.alternative_number,
+					"status": "Duplicate Lead"
+				},
+				fields=["name", "executive"]
+			)
+			duplicate_leads.extend(alt_duplicates)
+		
+		if not duplicate_leads:
+			frappe.logger().info(f"No duplicate leads found for {lead_name}")
+			return 0
+		
+		# Update executive for each duplicate lead
+		updated_count = 0
+		executive = frappe.get_doc('Executive', lead.executive)
+		
+		for duplicate in duplicate_leads:
+			if duplicate.executive != lead.executive:
+				# Update executive field
+				frappe.db.set_value(
+					"Lead", 
+					duplicate.name, 
+					{
+						"executive": lead.executive,
+						"assign_by": lead.assign_by
+					},
+					update_modified=True
+				)
+				
+				# Update assignments and permissions (like original lead)
+				try:
+					# Clear old assignments
+					assign_to.clear('Lead', duplicate.name)
+					
+					# Clear old permissions
+					frappe.db.delete("DocShare", {
+						"share_doctype": 'Lead',
+						"share_name": duplicate.name
+					})
+					
+					# Add new assignment to executive
+					assign_to.add({
+						"assign_to": [executive.email],
+						"doctype": 'Lead',
+						"name": duplicate.name
+					}, ignore_permissions=True)
+					
+					# Set permissions for executive
+					set_permission('Lead', duplicate.name, executive.email, 'write')
+					set_permission('Lead', duplicate.name, executive.email, 'share')
+					
+					frappe.logger().info(f"Synced executive and permissions to duplicate lead: {duplicate.name}")
+				except Exception as perm_error:
+					frappe.logger().error(f"Error setting permissions for {duplicate.name}: {str(perm_error)}")
+				
+				updated_count += 1
+		
+		if updated_count > 0:
+			frappe.db.commit()
+			frappe.msgprint(
+				f"Executive updated in {updated_count} duplicate lead(s)",
+				title="Duplicate Leads Synced",
+				indicator="blue"
+			)
+			frappe.logger().info(f"Synced executive '{lead.executive}' to {updated_count} duplicate leads for {lead_name}")
+		
+		return updated_count
+	
+	except Exception as e:
+		frappe.logger().error(f"Error syncing executive to duplicates for {lead_name}: {str(e)}")
+		frappe.log_error(f"Error syncing executive to duplicates: {str(e)}", "Lead Executive Sync")
+		return 0
