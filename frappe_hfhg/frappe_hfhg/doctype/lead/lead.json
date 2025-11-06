@@ -33,6 +33,7 @@
   "influencer_name",
   "mode",
   "created_on",
+  "is_applicable",
   "column_break_nuev",
   "middle_name",
   "age",
@@ -278,6 +279,13 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "New Lead\nDuplicate Lead\nFake Lead\nInvalid Number\nNot Connected\nNot Interested\nCallback\nConnected\nCS Followup\nCS Lined Up\nHT CS Done\nBudget Issue\nCosting Done\nHairfall PT\nMedi/PRP\nBooked\nDate Given\nHT Postpone\nBHT Followup\nHT Done\nHT Not Possible\nAlopecia Case\nLoan/EMI\nBeard HT\n2nd session\nHT Prospect\nMedi/PRP FUP\nHT Done FUP\nBooked FUP\nAppointment Fix FUP\nClinic Visit FUP\ntest"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_applicable",
+   "fieldtype": "Check",
+   "label": "Is Applicable",
+   "description": "Check this to apply mandatory field validation based on status"
   },
   {
    "fieldname": "service",

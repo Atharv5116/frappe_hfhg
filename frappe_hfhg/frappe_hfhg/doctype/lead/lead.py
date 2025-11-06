@@ -491,10 +491,22 @@ class Lead(Document):
 	def validate_mandatory_fields_on_status_change(self):
 		"""
 		Validate that all mandatory fields are filled when status changes to
-		anything other than 'Not Connected', 'Fake Lead', 'Invalid Number', or 'Duplicate Lead'
+		anything other than exempt statuses or when saving for the first time
 		"""
+		# Skip validation for new documents (first save)
+		if self.is_new():
+			return
+		
+		# If "Is Applicable" checkbox is not checked, don't require mandatory fields
+		if not self.get('is_applicable'):
+			return
+		
+		# If no status is selected, don't require mandatory fields
+		if not self.status:
+			return
+		
 		# Statuses that don't require mandatory fields
-		exempt_statuses = ["Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead"]
+		exempt_statuses = ["New Lead", "Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead", "Not Interested"]
 		
 		# Only validate if status is not in exempt list
 		if self.status not in exempt_statuses:
