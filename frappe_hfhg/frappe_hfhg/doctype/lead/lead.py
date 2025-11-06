@@ -41,7 +41,10 @@ class Lead(Document):
 			number = self.alternative_number.split("-")[-1]
 			if len(number) > 10 and number[0] == "0":
 				number = number[1:]
-				self.alternative_number = self.alternative_number.split("-")[0] + "-" + number 
+				self.alternative_number = self.alternative_number.split("-")[0] + "-" + number
+		
+		# Validate mandatory fields when status is changed (except for specific statuses)
+		self.validate_mandatory_fields_on_status_change()
 
 	def after_insert(self):
 		lead = get_original_lead_name(self.contact_number, self.alternative_number)
@@ -279,7 +282,10 @@ class Lead(Document):
 			except Exception as e:
 					frappe.logger().warning(f"Error in assigning executive: {str(e)}")
 	
-		self.status = "New Lead"
+		# Only set to "New Lead" if status is not already set or is not one of the exempt statuses
+		exempt_statuses = ["Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead"]
+		if not self.status or self.status not in exempt_statuses:
+			self.status = "New Lead"
 
 	def on_update(self):
 		old_doc = self.get_doc_before_save()
@@ -481,7 +487,84 @@ class Lead(Document):
 			executive = frappe.get_doc("Executive", {"email": frappe.session.user})
 			self.executive = executive.name
 			self.assign_by = frappe.session.user
+	
+	def validate_mandatory_fields_on_status_change(self):
+		"""
+		Validate that all mandatory fields are filled when status changes to
+		anything other than 'Not Connected', 'Fake Lead', 'Invalid Number', or 'Duplicate Lead'
+		"""
+		# Statuses that don't require mandatory fields
+		exempt_statuses = ["Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead"]
 		
+		# Only validate if status is not in exempt list
+		if self.status not in exempt_statuses:
+			missing_fields = []
+			
+			# Check basic fields
+			if not self.distance:
+				missing_fields.append("Distance")
+			
+			if not self.first_name:
+				missing_fields.append("First Name")
+			
+			if not self.middle_name:
+				missing_fields.append("Middle Name")
+			
+			if not self.last_name:
+				missing_fields.append("Last Name")
+			
+			if not self.age:
+				missing_fields.append("Age")
+			
+			if not self.profession:
+				missing_fields.append("Profession")
+			
+			if not self.mode:
+				missing_fields.append("Mode")
+			
+			if not self.current_treatment:
+				missing_fields.append("Have you taken or currently taking any hair treatment?")
+			
+			if not self.treatment_type:
+				missing_fields.append("What treatment option you are interested in?")
+			
+			if not self.planning_time:
+				missing_fields.append("How soon you are planning to start hair treatment?")
+			
+			if not self.consultation_type:
+				missing_fields.append("What mode of consultation you like to have?")
+			
+			if not self.family_history:
+				missing_fields.append("Family History")
+			
+			# Check if at least one hair loss type is selected
+			hair_loss_selected = (
+				self.hair_problem_hair_loss_check or 
+				self.hair_problem_baldness_check or 
+				self.hair_problem_handruff_check
+			)
+			if not hair_loss_selected:
+				missing_fields.append("Select hair loss problem type (at least one)")
+			
+			# Check if at least one baldness stage is selected
+			baldness_stage_selected = (
+				self.i or self.ii or self.ii_a or self.iii or self.iii_a or 
+				self.iii_vertex or self.iv or self.iv_a or self.v or 
+				self.v_a or self.vi or self.vii
+			)
+			if not baldness_stage_selected:
+				missing_fields.append("Select current level of baldness/hair loss stage (at least one)")
+			
+			# If there are missing fields, throw an error
+			if missing_fields:
+				frappe.throw(
+					_("The following fields are mandatory when status is '{}':<br><br>{}").format(
+						self.status,
+						"<br>".join([f"• {field}" for field in missing_fields])
+					),
+					title=_("Mandatory Fields Required")
+				)
+
 		
 		
 def validate_phone_number(phone):
