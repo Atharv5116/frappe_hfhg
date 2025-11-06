@@ -16,14 +16,6 @@ let scalp_areas = [
 let donor_areas = ["1", "2,3 & more", "Total"];
 
 frappe.ui.form.on("Lead", {
-  setup(frm) {
-    // Set custom query for executive field to show 50 records
-    frm.set_query("executive", function() {
-      return {
-        page_length: 50
-      };
-    });
-  },
   onload(frm) {
     // Update full_name on load if it's empty or outdated
     update_full_name(frm);
@@ -32,7 +24,68 @@ frappe.ui.form.on("Lead", {
       frm.doc.whatsapp_no = frm.doc.contact_number;
       fetch_and_inject_custom_html(frm);
     }
+    
+    // Apply mandatory field rules based on current status
+    apply_mandatory_field_rules(frm);
   },
+  
+  status: function(frm) {
+    // When status changes, update mandatory field rules immediately
+    apply_mandatory_field_rules(frm);
+    
+    // Also run in setTimeout to ensure it applies after value is set
+    setTimeout(() => {
+      apply_mandatory_field_rules(frm);
+    }, 0);
+  },
+  
+  is_applicable: function(frm) {
+    // When Is Applicable checkbox changes, update mandatory field rules
+    apply_mandatory_field_rules(frm);
+  },
+  
+  before_save: function(frm) {
+    // First apply the mandatory field rules to ensure fields are marked correctly
+    apply_mandatory_field_rules(frm);
+    
+    // Then validate mandatory fields before saving (except for new documents)
+    if (!frm.is_new()) {
+      return validate_mandatory_fields(frm);
+    }
+    return true;
+  },
+  
+  validate: function(frm) {
+    // Ensure mandatory field rules are applied before validation
+    apply_mandatory_field_rules(frm);
+    
+    // If status is exempt or is_applicable is unchecked, clear any validation errors
+    const exempt_statuses = [
+        "New Lead", 
+        "Not Connected", 
+        "Fake Lead", 
+        "Invalid Number", 
+        "Duplicate Lead", 
+        "Not Interested"
+    ];
+    
+    if (!frm.doc.is_applicable || !frm.doc.status || exempt_statuses.includes(frm.doc.status)) {
+        // Clear validation errors for our mandatory fields
+        const mandatory_fields = [
+            'distance', 'middle_name', 'last_name', 'age', 'profession',
+            'mode', 'current_treatment', 'treatment_type', 'planning_time',
+            'consultation_type', 'family_history'
+        ];
+        
+        mandatory_fields.forEach(fieldname => {
+            frm.set_df_property(fieldname, 'reqd', 0);
+        });
+        
+        // Force frappe to accept the validation
+        frappe.validated = true;
+    }
+  },
+  
   contact_number: function (frm) {
     if (frm.doc.contact_number && frm.doc.contact_number.length > 10) {
       frm.doc.whatsapp_no = frm.doc.contact_number;
@@ -1787,4 +1840,182 @@ function update_full_name(frm) {
     // Join the parts with space and set to full_name field
     frm.set_value('full_name', full_name_parts.join(' '));
 
+}
+
+// Apply mandatory field rules based on status
+function apply_mandatory_field_rules(frm) {
+    // Define the fields that can be mandatory
+    const mandatory_fields = [
+        'distance',
+        'middle_name',
+        'last_name',
+        'age',
+        'profession',
+        'mode',
+        'current_treatment',
+        'treatment_type',
+        'planning_time',
+        'consultation_type',
+        'family_history'
+    ];
+    
+    // Master switch: If "Is Applicable" checkbox is NOT checked, remove all mandatory flags
+    if (!frm.doc.is_applicable) {
+        mandatory_fields.forEach(fieldname => {
+            const field = frm.fields_dict[fieldname];
+            if (field) {
+                frm.set_df_property(fieldname, 'reqd', 0);
+                frm.refresh_field(fieldname);
+            }
+        });
+        frm.refresh_fields();
+        return;
+    }
+    
+    // "Is Applicable" is checked, so apply status-based logic
+    
+    // If no status is selected, don't require mandatory fields
+    if (!frm.doc.status) {
+        mandatory_fields.forEach(fieldname => {
+            const field = frm.fields_dict[fieldname];
+            if (field) {
+                frm.set_df_property(fieldname, 'reqd', 0);
+                frm.refresh_field(fieldname);
+            }
+        });
+        frm.refresh_fields();
+        return;
+    }
+    
+    // Statuses that don't require mandatory fields
+    const exempt_statuses = [
+        "New Lead", 
+        "Not Connected", 
+        "Fake Lead", 
+        "Invalid Number", 
+        "Duplicate Lead", 
+        "Not Interested"
+    ];
+    
+    // Check if current status is exempt
+    const is_exempt = exempt_statuses.includes(frm.doc.status);
+    
+    // Debug log
+    console.log('Mandatory Field Rules:', {
+        status: frm.doc.status,
+        is_applicable: frm.doc.is_applicable,
+        is_exempt: is_exempt,
+        should_be_mandatory: !is_exempt
+    });
+    
+    if (is_exempt) {
+        // Status is exempt, remove mandatory flags
+        console.log('Removing mandatory flags (exempt status)');
+        mandatory_fields.forEach(fieldname => {
+            const field = frm.fields_dict[fieldname];
+            if (field) {
+                frm.set_df_property(fieldname, 'reqd', 0);
+                frm.refresh_field(fieldname);
+            }
+        });
+    } else {
+        // Status is NOT exempt, make fields mandatory
+        console.log('Adding mandatory flags (non-exempt status)');
+        mandatory_fields.forEach(fieldname => {
+            const field = frm.fields_dict[fieldname];
+            if (field) {
+                frm.set_df_property(fieldname, 'reqd', 1);
+                frm.refresh_field(fieldname);
+            }
+        });
+    }
+    
+    // Final refresh to ensure all changes are visible
+    frm.refresh_fields();
+}
+
+// Validate mandatory fields before save
+function validate_mandatory_fields(frm) {
+    // Skip for new documents
+    if (frm.is_new()) {
+        return true;
+    }
+    
+    // If "Is Applicable" checkbox is not checked, don't require mandatory fields
+    if (!frm.doc.is_applicable) {
+        return true;
+    }
+    
+    // If no status is selected, don't require mandatory fields
+    if (!frm.doc.status) {
+        return true;
+    }
+    
+    // Statuses that don't require mandatory fields
+    const exempt_statuses = [
+        "New Lead", 
+        "Not Connected", 
+        "Fake Lead", 
+        "Invalid Number", 
+        "Duplicate Lead", 
+        "Not Interested"
+    ];
+    
+    // If status is exempt, skip validation
+    if (exempt_statuses.includes(frm.doc.status)) {
+        return true;
+    }
+    
+    // Fields to validate
+    const missing_fields = [];
+    
+    // Check each mandatory field
+    if (!frm.doc.distance) missing_fields.push("Distance");
+    if (!frm.doc.middle_name) missing_fields.push("Middle Name");
+    if (!frm.doc.last_name) missing_fields.push("Last Name");
+    if (!frm.doc.age) missing_fields.push("Age");
+    if (!frm.doc.profession) missing_fields.push("Profession");
+    if (!frm.doc.mode) missing_fields.push("Mode");
+    if (!frm.doc.current_treatment) missing_fields.push("Have you taken or currently taking any hair treatment?");
+    if (!frm.doc.treatment_type) missing_fields.push("What treatment option you are interested in?");
+    if (!frm.doc.planning_time) missing_fields.push("How soon you are planning to start hair treatment?");
+    if (!frm.doc.consultation_type) missing_fields.push("What mode of consultation you like to have?");
+    if (!frm.doc.family_history) missing_fields.push("Family History");
+    
+    // Check if at least one hair loss type is selected
+    const hair_loss_selected = (
+        frm.doc.hair_problem_hair_loss_check || 
+        frm.doc.hair_problem_baldness_check || 
+        frm.doc.hair_problem_handruff_check
+    );
+    if (!hair_loss_selected) {
+        missing_fields.push("Select hair loss problem type (at least one)");
+    }
+    
+    // Check if at least one baldness stage is selected
+    const baldness_stage_selected = (
+        frm.doc.i || frm.doc.ii || frm.doc.ii_a || frm.doc.iii || frm.doc.iii_a ||
+        frm.doc.iii_vertex || frm.doc.iv || frm.doc.iv_a || frm.doc.v ||
+        frm.doc.v_a || frm.doc.vi || frm.doc.vii
+    );
+    if (!baldness_stage_selected) {
+        missing_fields.push("Select current level of baldness/hair loss stage (at least one)");
+    }
+    
+    // If there are missing fields, show error and prevent save
+    if (missing_fields.length > 0) {
+        let message = `<b>The following fields are mandatory when status is '${frm.doc.status}':</b><br><br>`;
+        message += missing_fields.map(field => `• ${field}`).join('<br>');
+        
+        frappe.msgprint({
+            title: __('Mandatory Fields Required'),
+            indicator: 'red',
+            message: message
+        });
+        
+        // Prevent save
+        frappe.validated = false;
+    }
+    
+    return true;
 }
