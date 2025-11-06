@@ -506,7 +506,7 @@ class Lead(Document):
 			return
 		
 		# Statuses that don't require mandatory fields
-		exempt_statuses = ["New Lead", "Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead", "Not Interested"]
+		exempt_statuses = ["New Lead", "Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead", "Not Interested", "Connected"]
 		
 		# Only validate if status is not in exempt list
 		if self.status not in exempt_statuses:
