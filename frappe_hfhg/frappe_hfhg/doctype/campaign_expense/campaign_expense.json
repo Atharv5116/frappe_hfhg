@@ -12,7 +12,8 @@
   "amount",
   "gst_amount",
   "total_amount",
-  "ad_name"
+  "ad_name",
+  "custom_upload_campaignad_expense_file_"
  ],
  "fields": [
   {
@@ -53,11 +54,16 @@
    "fieldname": "ad_name",
    "fieldtype": "Data",
    "label": "Ad Name"
+  },
+  {
+   "fieldname": "custom_upload_campaignad_expense_file_",
+   "fieldtype": "Attach",
+   "label": "Upload campaign/ads expense"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-03 17:33:19.094274",
+ "modified": "2025-11-06 21:22:48.287032",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
  "name": "Campaign Expense",
