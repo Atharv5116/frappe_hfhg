@@ -22,11 +22,29 @@ def execute(filters=None) -> tuple:
 def get_columns(filters: Filters) -> list[dict]:
     columns: list[dict] = [
         {
-            "label": _("Ad Name"),
+            "label": _("Ad ID"),
             "fieldtype": "Link",
-            "fieldname": "ad_name",
+            "fieldname": "ad_id",
             "options": "Meta Ads",
-            "width": 200,
+            "width": 150,
+        },
+        {
+            "label": _("Ad Name"),
+            "fieldtype": "Data",
+            "fieldname": "ad_display_name",
+            "width": 250,
+        },
+        {
+            "label": _("Ad Status"),
+            "fieldtype": "Data",
+            "fieldname": "ad_status",
+            "width": 120,
+        },
+        {
+            "label": _("Ad Created Date"),
+            "fieldtype": "Date",
+            "fieldname": "ad_created_date",
+            "width": 130,
         },
         {
             "label": _("Source"),
@@ -91,6 +109,12 @@ def get_data(filters: Filters) -> list[dict]:
         # Get the source for this ad from the Lead table
         source = get_ad_source(ad_name)
         
+        # Get ad display name and status from Meta Ads
+        ad_details = get_ad_details(ad_name)
+        
+        # Get ad creation date from Meta Lead Form
+        ad_created_date = get_ad_created_date(ad_name)
+        
         # Net profit is based on period revenue from all sources
         net_profit = period_revenue - total_expense
         
@@ -100,7 +124,10 @@ def get_data(filters: Filters) -> list[dict]:
             roi_percent = ((period_revenue - total_expense) / total_expense) * 100
         
         row = {
-            "ad_name": ad_name,
+            "ad_id": ad_name,  # ad_name is actually the ad_id (document name)
+            "ad_display_name": ad_details.get("ads_name", ad_name),
+            "ad_status": ad_details.get("status", ""),
+            "ad_created_date": ad_created_date,
             "source": source,
             "total_expense": total_expense,
             "lifetime_revenue": lifetime_revenue,
@@ -126,24 +153,21 @@ def get_ads_with_activity(filters: Filters) -> list[dict]:
             
             UNION
             
-            -- Ads from Leads (that have payments)
+            -- Ads from Leads (that have payments via Surgery within date range OR all time)
             SELECT DISTINCT l.ad_name, l.source
             FROM `tabLead` l
             INNER JOIN (
-                -- Leads with payments via Costing
-                SELECT DISTINCT c.patient
-                FROM `tabCosting` c
-                INNER JOIN `tabPayment` p ON p.patient = c.name
-                WHERE p.type = 'Payment'
-                
-                UNION
-                
                 -- Leads with payments via Surgery
                 SELECT DISTINCT c.patient
                 FROM `tabSurgery` s
                 INNER JOIN `tabCosting` c ON s.patient = c.name
                 INNER JOIN `tabPayment` p ON p.patient = s.name
                 WHERE p.type = 'Payment'
+                AND p.payment_type = 'Surgery'
+                AND (
+                    p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+                    OR p.transaction_date IS NULL
+                )
             ) AS leads_with_payments ON l.name = leads_with_payments.patient
             WHERE l.ad_name IS NOT NULL 
             AND l.ad_name != ''
@@ -208,6 +232,57 @@ def get_ad_source(ad_name: str) -> str:
     result = frappe.db.sql(query, {"ad_name": ad_name}, as_dict=True)
     return result[0].get("source", "") if result else ""
 
+def get_ad_details(ad_id: str) -> dict:
+    """Get ad display name and status from Meta Ads doctype"""
+    try:
+        # Check if Meta Ads exists
+        if not frappe.db.exists("Meta Ads", ad_id):
+            return {"ads_name": ad_id, "status": ""}
+        
+        # Fetch ad details
+        ad = frappe.db.get_value(
+            "Meta Ads",
+            ad_id,
+            ["ads_name", "status"],
+            as_dict=True
+        )
+        
+        if ad:
+            return {
+                "ads_name": ad.get("ads_name") or ad_id,
+                "status": ad.get("status") or ""
+            }
+        else:
+            return {"ads_name": ad_id, "status": ""}
+    except Exception:
+        # If any error, return the ad_id as name
+        return {"ads_name": ad_id, "status": ""}
+
+def get_ad_created_date(ad_id: str) -> str | None:
+    """Get ad creation date from Meta Lead Form doctype"""
+    try:
+        # Query Meta Lead Form for created_at date where ads field matches ad_id
+        query = """
+            SELECT created_at
+            FROM `tabMeta Lead Form`
+            WHERE ads = %(ad_id)s
+            ORDER BY created_at ASC
+            LIMIT 1
+        """
+        
+        result = frappe.db.sql(query, {"ad_id": ad_id}, as_dict=True)
+        
+        if result and result[0].get("created_at"):
+            # Return only the date part (YYYY-MM-DD)
+            created_at = result[0].get("created_at")
+            if created_at:
+                return str(created_at).split()[0]  # Get date part only
+        
+        return None
+    except Exception:
+        # If any error, return None
+        return None
+
 def get_ad_expenses(filters: Filters, ad_name: str) -> float:
     """Get total expenses for a specific ad within the date range"""
     query = """
@@ -241,7 +316,7 @@ def get_ad_revenue(filters: Filters, ad_name: str, source: str | None, lifetime:
     if not lifetime:
         date_condition = "AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s"
     
-    # Single unified query to get all payments correctly
+    # Query to get only Surgery payments
     query = f"""
         SELECT 
             COALESCE(SUM(
@@ -253,15 +328,7 @@ def get_ad_revenue(filters: Filters, ad_name: str, source: str | None, lifetime:
             ), 0) as revenue
         FROM `tabPayment` p
         INNER JOIN (
-            -- Payments via Costing
-            SELECT c.name as payment_patient, l.source, l.ad_name
-            FROM `tabCosting` c
-            INNER JOIN `tabLead` l ON c.patient = l.name
-            WHERE l.ad_name = %(ad_name)s
-            
-            UNION ALL
-            
-            -- Payments via Surgery
+            -- Payments via Surgery only
             SELECT s.name as payment_patient, l.source, l.ad_name
             FROM `tabSurgery` s
             INNER JOIN `tabCosting` c ON s.patient = c.name
@@ -269,6 +336,7 @@ def get_ad_revenue(filters: Filters, ad_name: str, source: str | None, lifetime:
             WHERE l.ad_name = %(ad_name)s
         ) AS lead_data ON p.patient = lead_data.payment_patient
         WHERE p.type = 'Payment'
+        AND p.payment_type = 'Surgery'
         {date_condition}
     """
     

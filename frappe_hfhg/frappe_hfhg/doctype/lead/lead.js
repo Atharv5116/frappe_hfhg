@@ -66,7 +66,8 @@ frappe.ui.form.on("Lead", {
         "Fake Lead", 
         "Invalid Number", 
         "Duplicate Lead", 
-        "Not Interested"
+        "Not Interested",
+        "Connected"
     ];
     
     if (!frm.doc.is_applicable || !frm.doc.status || exempt_statuses.includes(frm.doc.status)) {
@@ -1894,7 +1895,8 @@ function apply_mandatory_field_rules(frm) {
         "Fake Lead", 
         "Invalid Number", 
         "Duplicate Lead", 
-        "Not Interested"
+        "Not Interested",
+        "Connected"
     ];
     
     // Check if current status is exempt
@@ -1958,7 +1960,8 @@ function validate_mandatory_fields(frm) {
         "Fake Lead", 
         "Invalid Number", 
         "Duplicate Lead", 
-        "Not Interested"
+        "Not Interested",
+        "Connected"
     ];
     
     // If status is exempt, skip validation
