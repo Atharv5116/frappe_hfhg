@@ -336,6 +336,10 @@ class Lead(Document):
 			if old_doc and old_doc.executive != self.executive and self.status != "Duplicate Lead":
 				sync_executive_to_duplicates(self.name)
 			
+			# Sync executive change from duplicate lead to original lead
+			if old_doc and old_doc.executive != self.executive and self.status == "Duplicate Lead":
+				sync_executive_to_original_lead(self)
+			
 			costing_exists = frappe.db.exists("Costing", {"patient": self.name})
 			if costing_exists:
 				costing = frappe.get_doc('Costing', {"patient": self.name})
@@ -768,3 +772,67 @@ def sync_executive_to_duplicates(lead_name):
 		frappe.logger().error(f"Error syncing executive to duplicates for {lead_name}: {str(e)}")
 		frappe.log_error(f"Error syncing executive to duplicates: {str(e)}", "Lead Executive Sync")
 		return 0
+
+@frappe.whitelist()
+def sync_executive_to_original_lead(duplicate_lead):
+	"""
+	Sync executive changes from duplicate lead to original lead.
+	This will then automatically sync to all other duplicate leads via the original lead's on_update.
+	
+	Args:
+		duplicate_lead: Duplicate Lead document or name
+	"""
+	try:
+		# Get the duplicate lead document
+		if isinstance(duplicate_lead, str):
+			duplicate_lead = frappe.get_doc("Lead", duplicate_lead)
+		
+		# Only proceed if this is a duplicate lead
+		if duplicate_lead.status != "Duplicate Lead":
+			return
+		
+		# Find the original lead using the get_original_lead_name function
+		original_lead_name = get_original_lead_name(
+			duplicate_lead.contact_number, 
+			duplicate_lead.alternative_number
+		)
+		
+		if not original_lead_name:
+			frappe.logger().warning(f"No original lead found for duplicate lead: {duplicate_lead.name}")
+			return
+		
+		# Get the original lead document
+		original_lead = frappe.get_doc("Lead", original_lead_name)
+		
+		# Check if executive needs to be updated
+		if original_lead.executive != duplicate_lead.executive:
+			frappe.logger().info(
+				f"Syncing executive from duplicate lead '{duplicate_lead.name}' to original lead '{original_lead.name}'"
+			)
+			
+			# Update the original lead's executive
+			original_lead.executive = duplicate_lead.executive
+			original_lead.assign_by = duplicate_lead.assign_by
+			
+			# Save the original lead (this will trigger sync_executive_to_duplicates automatically)
+			original_lead.save(ignore_permissions=True)
+			frappe.db.commit()
+			
+			frappe.msgprint(
+				f"Executive updated in original lead '{original_lead.name}' and all duplicate leads",
+				title="Executive Synced",
+				indicator="green"
+			)
+			
+			frappe.logger().info(
+				f"Successfully synced executive '{duplicate_lead.executive}' from duplicate to original lead"
+			)
+			
+			return True
+		
+		return False
+	
+	except Exception as e:
+		frappe.logger().error(f"Error syncing executive to original lead: {str(e)}")
+		frappe.log_error(f"Error syncing executive to original lead: {str(e)}", "Lead Executive Sync to Original")
+		return False
