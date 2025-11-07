@@ -5,6 +5,8 @@ frappe.query_reports["Ad Expense Report"] = {
   onload: async function (report) {
     updateSummary(report);
     
+    setupAdDetailsButton(report);
+    
     // Update summary when filters change
     report.filters.forEach(function (filter) {
       let original_on_change = filter.df.onchange;
@@ -19,6 +21,21 @@ frappe.query_reports["Ad Expense Report"] = {
   
   refresh: function (report) {
     updateSummary(report);
+  },
+  
+  formatter: function (value, row, column, data, default_formatter) {
+    if (column.fieldname === "details_button") {
+      const adId = (data && data.ad_id) || "";
+      const adLabel = (data && data.ad_display_name) || adId;
+      const adIdAttr = frappe.utils.escape_html(adId || "");
+      const adLabelAttr = frappe.utils.escape_html(adLabel || "");
+      return `
+        <button type="button" class="btn btn-xs btn-primary ad-details-btn" data-ad-id="${adIdAttr}" data-ad-label="${adLabelAttr}">
+          ${__("Details")}
+        </button>
+      `;
+    }
+    return default_formatter(value, row, column, data);
   },
   
   filters: [
@@ -134,3 +151,70 @@ const updateSummary = function (report) {
   
   report.refresh();
 };
+
+function setupAdDetailsButton(report) {
+  report.page.wrapper.off("click", ".ad-details-btn");
+  report.page.wrapper.on("click", ".ad-details-btn", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const button = event.currentTarget;
+    const adId = button.getAttribute("data-ad-id");
+    const adLabel = button.getAttribute("data-ad-label");
+    
+    if (!adId) {
+      frappe.msgprint({
+        title: __("Details"),
+        message: __("Ad ID not found for this row."),
+        indicator: "orange",
+      });
+      return;
+    }
+    
+    // Get all-time data - no date filters applied
+    frappe.call({
+      method:
+        "frappe_hfhg.frappe_hfhg.report.ad_expense_report.ad_expense_report.get_ad_activity_stats",
+      args: {
+        ad_id: adId,
+      },
+      freeze: true,
+      freeze_message: __("Fetching ad details..."),
+      callback: function (r) {
+        if (!r.message) {
+          frappe.msgprint({
+            title: __("Details"),
+            message: __("No data found."),
+            indicator: "orange",
+          });
+          return;
+        }
+        
+        const stats = r.message;
+        const html = `
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div><strong>${__("Total Leads")}:</strong> ${stats.total_leads || 0}</div>
+            <div><strong>${__("Costing Payments")}:</strong> ${stats.costing_payments || 0}</div>
+            <div><strong>${__("Surgeries Created")}:</strong> ${stats.surgery_created || 0}</div>
+            <div><strong>${__("Consultations Created")}:</strong> ${stats.consultation_created || 0}</div>
+          </div>
+          <div style="margin-top: 10px; font-size: 12px; color: #666;">
+            ${__("All-time data (not filtered by date range)")}
+          </div>
+        `;
+        
+        frappe.msgprint({
+          title: `${__("Ad Details")}: ${adLabel || adId}`,
+          message: html,
+          indicator: "blue",
+        });
+      },
+      error: function (err) {
+        frappe.msgprint({
+          title: __("Details"),
+          message: err.message || __("Failed to fetch ad details."),
+          indicator: "red",
+        });
+      },
+    });
+  });
+}
