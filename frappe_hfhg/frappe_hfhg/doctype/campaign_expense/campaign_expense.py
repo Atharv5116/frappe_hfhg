@@ -2,6 +2,8 @@ import frappe
 from frappe.model.document import Document
 import pandas as pd
 import os
+from frappe import _
+from frappe.utils import formatdate
 
 class CampaignExpense(Document):
     def validate(self):
@@ -20,6 +22,8 @@ class CampaignExpense(Document):
         else:
             # If neither is provided, set total to None or 0
             self.total_amount = None
+        
+        self.ensure_unique_ad_date()
     
     def after_insert(self):
         """Import expenses from Excel file if uploaded"""
@@ -47,6 +51,7 @@ class CampaignExpense(Document):
             
             # Expected columns: Campaign name, Ad name, Cost, GST amount, Total amount
             created_count = 0
+            duplicate_count = 0
             
             for index, row in df.iterrows():
                 try:
@@ -59,12 +64,19 @@ class CampaignExpense(Document):
                     if not ad_name:
                         continue
                     
+                    expense_date = self.date or frappe.utils.today()
+                    
+                    # Skip if a record with the same ad and date already exists
+                    if frappe.db.exists("Campaign Expense", {"ads": ad_name, "date": expense_date}):
+                        duplicate_count += 1
+                        continue
+                    
                     # Create Campaign Expense entry directly
                     expense = frappe.new_doc("Campaign Expense")
                     expense.ads = ad_name  # Now a Data field, just store the ad name
                     expense.ad_name = ad_name
                     expense.campaign = campaign_name
-                    expense.date = self.date or frappe.utils.today()
+                    expense.date = expense_date
                     
                     # Get amounts from exact column names
                     expense.amount = float(row.get('Cost', 0))
@@ -81,6 +93,31 @@ class CampaignExpense(Document):
             if created_count > 0:
                 frappe.msgprint(f"Successfully imported {created_count} expense records from Excel file")
             
+            if duplicate_count > 0:
+                frappe.msgprint(
+                    _(f"Skipped {duplicate_count} rows because an expense for the same ad and date already exists."),
+                    indicator="orange",
+                    title="Duplicate Entries Skipped"
+                )
+            
         except Exception as e:
             frappe.log_error(f"Error importing expenses from Excel: {str(e)}", "Campaign Expense Excel Import")
             frappe.throw(f"Failed to import expenses from Excel: {str(e)}")
+
+    def ensure_unique_ad_date(self):
+        if not self.ads or not self.date:
+            return
+        
+        filters = {
+            "ads": self.ads,
+            "date": self.date,
+        }
+        
+        if self.name:
+            filters["name"] = ["!=", self.name]
+        
+        if frappe.db.exists("Campaign Expense", filters):
+            frappe.throw(
+                _(f"An expense for ad '{self.ads}' already exists on {formatdate(self.date)}."),
+                title="Duplicate Ad Expense"
+            )

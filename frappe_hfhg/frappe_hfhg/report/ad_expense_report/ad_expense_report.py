@@ -86,6 +86,12 @@ def get_columns(filters: Filters) -> list[dict]:
             "fieldname": "roi_percent",
             "width": 120,
         },
+        {
+            "label": _("Details"),
+            "fieldtype": "Data",
+            "fieldname": "details_button",
+            "width": 110,
+        },
     ]
 
     return columns
@@ -134,6 +140,7 @@ def get_data(filters: Filters) -> list[dict]:
             "period_revenue": period_revenue,
             "net_profit": net_profit,
             "roi_percent": roi_percent,
+            "details_button": _("Details"),
         }
         rows.append(row)
     
@@ -359,3 +366,70 @@ def get_ad_revenue(filters: Filters, ad_name: str, source: str | None, lifetime:
     result = frappe.db.sql(query, params, as_dict=True)
     
     return float(result[0].get("revenue", 0)) if result else 0.0
+
+@frappe.whitelist()
+def get_ad_activity_stats(ad_id: str, from_date: str | None = None, to_date: str | None = None) -> dict:
+    """Return all-time lead, costing payment, surgery, and consultation counts for a given ad (ignores date filters)"""
+    if not ad_id:
+        frappe.throw(_("Ad ID is required"), title=_("Missing Ad ID"))
+    
+    params: dict[str, str] = {"ad_id": ad_id}
+    
+    # All-time data - no date filtering
+    total_leads = frappe.db.sql(
+        """
+        SELECT COUNT(*)
+        FROM `tabLead` l
+        WHERE l.docstatus < 2
+          AND l.ad_name = %(ad_id)s
+        """,
+        params,
+    )[0][0] or 0
+    
+    costing_payment_count = frappe.db.sql(
+        """
+        SELECT COUNT(*)
+        FROM `tabPayment` p
+        INNER JOIN `tabCosting` c ON p.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Costing'
+          AND l.docstatus < 2
+          AND l.ad_name = %(ad_id)s
+        """,
+        params,
+    )[0][0] or 0
+    
+    surgery_created_count = frappe.db.sql(
+        """
+        SELECT COUNT(*)
+        FROM `tabSurgery` s
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE s.docstatus < 2
+          AND c.docstatus < 2
+          AND l.docstatus < 2
+          AND l.ad_name = %(ad_id)s
+        """,
+        params,
+    )[0][0] or 0
+    
+    consultation_created_count = frappe.db.sql(
+        """
+        SELECT COUNT(*)
+        FROM `tabConsultation` cons
+        INNER JOIN `tabLead` l ON l.name = cons.patient
+        WHERE cons.docstatus < 2
+          AND l.docstatus < 2
+          AND l.ad_name = %(ad_id)s
+        """,
+        params,
+    )[0][0] or 0
+    
+    return {
+        "total_leads": total_leads,
+        "costing_payments": costing_payment_count,
+        "surgery_created": surgery_created_count,
+        "consultation_created": consultation_created_count,
+    }
