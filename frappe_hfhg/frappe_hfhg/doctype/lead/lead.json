@@ -89,6 +89,7 @@
   "column_break_hvqi",
   "iii_a",
   "v_a",
+  "na_stage",
   "doctors_input_tab",
   "section_break_yulf",
   "clinical_diagnosis",
@@ -191,19 +192,19 @@
    "fieldname": "treatment_type",
    "fieldtype": "Select",
    "label": "What treatment option you are interested in?",
-   "options": "\nHair loss medicines\nPRP / GFC therapy\nHair transplant\nOther"
+   "options": "\nHair loss medicines\nPRP / GFC therapy\nHair transplant\nOther\nNA"
   },
   {
    "fieldname": "consultation_type",
    "fieldtype": "Select",
    "label": "What mode of consultation you like to have?",
-   "options": "\nOnline consultation\nIn clinic consultation"
+   "options": "\nOnline consultation\nIn clinic consultation\nNA"
   },
   {
    "fieldname": "planning_time",
    "fieldtype": "Select",
    "label": "How soon you are planning to start hair treatment?",
-   "options": "\nWithin a week\nWithin a month\nNot decided yet"
+   "options": "\nWithin a week\nWithin a month\nNot decided yet\nNA"
   },
   {
    "depends_on": "eval:doc.treatment_type == 'Other'",
@@ -569,6 +570,12 @@
   },
   {
    "default": "0",
+   "fieldname": "vii",
+   "fieldtype": "Check",
+   "label": "VII"
+  },
+  {
+   "default": "0",
    "fieldname": "iv_a",
    "fieldtype": "Check",
    "label": "IV A"
@@ -586,11 +593,11 @@
    "label": "V A"
   },
   {
-   "default": "0",
-   "fieldname": "vii",
-   "fieldtype": "Check",
-   "label": "VII"
-  },
+    "default": "0",
+    "fieldname": "na_stage",
+    "fieldtype": "Check",
+    "label": "NA"
+   },
   {
    "fieldname": "section_break_qinj",
    "fieldtype": "Section Break"
@@ -932,7 +939,7 @@
    "fieldname": "distance",
    "fieldtype": "Select",
    "label": "Distance",
-   "options": "\nNear\nFar"
+   "options": "\nNear\nFar\nNA"
   },
   {
    "fieldname": "imported_source",
@@ -1027,7 +1034,7 @@
    "fieldname": "family_history",
    "fieldtype": "Select",
    "label": "Family History",
-   "options": "\nMaternal side\nPaternal side\nBoth"
+   "options": "\nMaternal side\nPaternal side\nBoth\nNA"
   },
   {
    "depends_on": "eval:doc.source == 'Influencer'",
