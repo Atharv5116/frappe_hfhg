@@ -3,6 +3,18 @@ from frappe import _
 
 Filters = frappe._dict
 
+META_ADS_BY_TRIMMED_NAME_SQL = """
+    SELECT
+        TRIM(ads_name) AS trimmed_ads_name,
+        COUNT(*) AS match_count,
+        IF(COUNT(*) = 1, MAX(name), NULL) AS single_meta_id,
+        MAX(ads_name) AS display_ads_name
+    FROM `tabMeta Ads`
+    WHERE ads_name IS NOT NULL
+      AND ads_name != ''
+    GROUP BY TRIM(ads_name)
+"""
+
 @frappe.whitelist()
 def execute(filters=None) -> tuple:
     if isinstance(filters, str):
@@ -183,15 +195,22 @@ def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, s
     }
     
     rows = frappe.db.sql(
-        """
+        f"""
         SELECT DISTINCT
-            COALESCE(ma.name, TRIM(l.ad_name)) AS ad_identifier,
+            CASE
+                WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
+                WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
+                ELSE TRIM(l.ad_name)
+            END AS ad_identifier,
             MIN(TRIM(l.ad_name)) AS fallback_ad_name
         FROM `tabPayment` p
         INNER JOIN `tabSurgery` s ON s.name = p.patient
         INNER JOIN `tabCosting` c ON s.patient = c.name
         INNER JOIN `tabLead` l ON c.patient = l.name
-        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         WHERE p.docstatus < 2
           AND p.type = 'Payment'
           AND p.payment_type = 'Surgery'
@@ -239,10 +258,17 @@ def get_campaign_expense_summary(filters: Filters) -> tuple[dict[str, float], di
         SELECT 
             CASE
                 WHEN ce.meta_ad_id IS NOT NULL AND ce.meta_ad_id != '' THEN ce.meta_ad_id
-                WHEN ma_by_ads.name IS NOT NULL THEN ma_by_ads.name
+                WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
                 ELSE TRIM(ce.ad_name)
             END AS canonical_id,
-            COALESCE(ma_by_id.ads_name, ma_by_ads.ads_name, TRIM(ce.ad_name)) AS display_name,
+            COALESCE(
+                ma_by_id.ads_name,
+                CASE
+                    WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.display_ads_name
+                    ELSE NULL
+                END,
+                TRIM(ce.ad_name)
+            ) AS display_name,
             COALESCE(SUM(
                 CASE 
                     WHEN ce.total_amount IS NOT NULL AND ce.total_amount != ''
@@ -252,7 +278,9 @@ def get_campaign_expense_summary(filters: Filters) -> tuple[dict[str, float], di
             ), 0) AS total_expense
         FROM `tabCampaign Expense` ce
         LEFT JOIN `tabMeta Ads` ma_by_id ON ma_by_id.name = ce.meta_ad_id
-        LEFT JOIN `tabMeta Ads` ma_by_ads ON TRIM(ma_by_ads.ads_name) = TRIM(ce.ad_name)
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(ce.ad_name)
         WHERE ce.ad_name IS NOT NULL
           AND ce.ad_name != ''
           AND ce.date BETWEEN %(from_date)s AND %(to_date)s
@@ -295,10 +323,17 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
         SELECT 
             CASE
                 WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
-                WHEN ma_by_ads.name IS NOT NULL THEN ma_by_ads.name
+                WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
                 ELSE TRIM(l.ad_name)
             END AS canonical_id,
-            COALESCE(ma_by_name.ads_name, ma_by_ads.ads_name, TRIM(l.ad_name)) AS display_name,
+            COALESCE(
+                ma_by_name.ads_name,
+                CASE
+                    WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.display_ads_name
+                    ELSE NULL
+                END,
+                TRIM(l.ad_name)
+            ) AS display_name,
             COALESCE(SUM(
                 CASE 
                     WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
@@ -311,7 +346,9 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
         INNER JOIN `tabCosting` c ON s.patient = c.name
         INNER JOIN `tabLead` l ON c.patient = l.name
         LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
-        LEFT JOIN `tabMeta Ads` ma_by_ads ON TRIM(ma_by_ads.ads_name) = TRIM(l.ad_name)
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         WHERE p.docstatus < 2
           AND p.type = 'Payment'
           AND p.payment_type = 'Surgery'
@@ -435,7 +472,7 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
     if canonical_tuple:
         params["canonical_ids"] = canonical_tuple
         filter_clauses.append("ma_by_name.name IN %(canonical_ids)s")
-        filter_clauses.append("ma_by_ads.name IN %(canonical_ids)s")
+        filter_clauses.append("ma_by_ads_unique.single_meta_id IN %(canonical_ids)s")
     if lookup_tuple:
         params["lookup_values"] = lookup_tuple
         filter_clauses.append("TRIM(l.ad_name) IN %(lookup_values)s")
@@ -450,13 +487,15 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
         SELECT 
             CASE
                 WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
-                WHEN ma_by_ads.name IS NOT NULL THEN ma_by_ads.name
+                WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
                 ELSE TRIM(l.ad_name)
             END AS canonical_id,
             l.source
         FROM `tabLead` l
         LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
-        LEFT JOIN `tabMeta Ads` ma_by_ads ON TRIM(ma_by_ads.ads_name) = TRIM(l.ad_name)
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         WHERE l.source IS NOT NULL
           AND l.source != ''
           AND l.ad_name IS NOT NULL
@@ -505,12 +544,15 @@ def get_ad_activity_stats(ad_id: str, from_date: str | None = None, to_date: str
     }
 
     total_leads = frappe.db.sql(
-        """
+        f"""
         SELECT COUNT(*)
         FROM `tabLead` l
-        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         WHERE l.docstatus < 2
-          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND COALESCE(ma_by_name.name, ma_by_ads_unique.single_meta_id, TRIM(l.ad_name)) = %(ad_identifier)s
           AND l.creation >= %(from_datetime)s
           AND l.creation < %(to_datetime)s
         """,
@@ -518,30 +560,36 @@ def get_ad_activity_stats(ad_id: str, from_date: str | None = None, to_date: str
     )[0][0] or 0
 
     consultations = frappe.db.sql(
-        """
+        f"""
         SELECT COUNT(*)
         FROM `tabConsultation` cons
         INNER JOIN `tabLead` l ON l.name = cons.patient
-        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         WHERE cons.docstatus < 2
           AND l.docstatus < 2
-          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND COALESCE(ma_by_name.name, ma_by_ads_unique.single_meta_id, TRIM(l.ad_name)) = %(ad_identifier)s
           AND cons.date BETWEEN %(from_date)s AND %(to_date)s
         """,
         params,
     )[0][0] or 0
 
     booked_leads = frappe.db.sql(
-        """
+        f"""
         SELECT COUNT(DISTINCT l.name)
         FROM `tabPayment` p
         INNER JOIN `tabCosting` c ON p.patient = c.name
         INNER JOIN `tabLead` l ON c.patient = l.name
-        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         WHERE p.docstatus < 2
           AND p.type = 'Payment'
           AND p.payment_type = 'Costing'
-          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND COALESCE(ma_by_name.name, ma_by_ads_unique.single_meta_id, TRIM(l.ad_name)) = %(ad_identifier)s
           AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
         """,
         params,
@@ -553,7 +601,10 @@ def get_ad_activity_stats(ad_id: str, from_date: str | None = None, to_date: str
         FROM `tabSurgery` s
         INNER JOIN `tabCosting` c ON s.patient = c.name
         INNER JOIN `tabLead` l ON c.patient = l.name
-        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
         LEFT JOIN `tabPayment` p ON p.patient = s.name
             AND p.docstatus < 2
             AND p.type = 'Payment'
@@ -561,7 +612,7 @@ def get_ad_activity_stats(ad_id: str, from_date: str | None = None, to_date: str
         WHERE s.docstatus < 2
           AND c.docstatus < 2
           AND l.docstatus < 2
-          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND COALESCE(ma_by_name.name, ma_by_ads_unique.single_meta_id, TRIM(l.ad_name)) = %(ad_identifier)s
           AND IFNULL(s.pending_amount, 0) = 0
           AND {get_surgery_date_clause()} BETWEEN %(from_date)s AND %(to_date)s
         """,
