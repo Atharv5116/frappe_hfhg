@@ -164,7 +164,7 @@ function setupAdDetailsButton(report) {
     const button = event.currentTarget;
     const adId = button.getAttribute("data-ad-id");
     const adLabel = button.getAttribute("data-ad-label");
-    
+
     if (!adId) {
       frappe.msgprint({
         title: __("Details"),
@@ -173,13 +173,16 @@ function setupAdDetailsButton(report) {
       });
       return;
     }
-    
-    // Get all-time data - no date filters applied
+
+    const filters = report.get_values();
+
     frappe.call({
       method:
         "frappe_hfhg.frappe_hfhg.report.ad_expense_report.ad_expense_report.get_ad_activity_stats",
       args: {
         ad_id: adId,
+        from_date: filters.from_date,
+        to_date: filters.to_date,
       },
       freeze: true,
       freeze_message: __("Fetching ad details..."),
@@ -192,20 +195,20 @@ function setupAdDetailsButton(report) {
           });
           return;
         }
-        
+
         const stats = r.message;
         const html = `
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <div><strong>${__("Total Leads")}:</strong> ${stats.total_leads || 0}</div>
-            <div><strong>${__("Costing Payments")}:</strong> ${stats.costing_payments || 0}</div>
-            <div><strong>${__("Surgeries Created")}:</strong> ${stats.surgery_created || 0}</div>
-            <div><strong>${__("Consultations Created")}:</strong> ${stats.consultation_created || 0}</div>
+            <div><strong>${__("Leads Created")}:</strong> ${stats.leads_created || 0}</div>
+            <div><strong>${__("Consultations Created")}:</strong> ${stats.consultations_created || 0}</div>
+            <div><strong>${__("Booked Leads")}:</strong> ${stats.booked_leads || 0}</div>
+            <div><strong>${__("Surgeries Completed")}:</strong> ${stats.surgeries_completed || 0}</div>
           </div>
           <div style="margin-top: 10px; font-size: 12px; color: #666;">
-            ${__("All-time data (not filtered by date range)")}
+            ${__("Counts limited to the selected date range")}
           </div>
         `;
-        
+
         frappe.msgprint({
           title: `${__("Ad Details")}: ${adLabel || adId}`,
           message: html,
