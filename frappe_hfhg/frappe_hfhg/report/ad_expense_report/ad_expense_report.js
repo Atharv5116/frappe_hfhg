@@ -25,7 +25,11 @@ frappe.query_reports["Ad Expense Report"] = {
   
   formatter: function (value, row, column, data, default_formatter) {
     if (column.fieldname === "details_button") {
+      const isTotalRow = data && (data.is_total_row || data.__is_total_row || data.ad_id === __("Total"));
       const adId = (data && data.ad_id) || "";
+      if (!adId || isTotalRow) {
+        return "";
+      }
       const adLabel = (data && data.ad_display_name) || adId;
       const adIdAttr = frappe.utils.escape_html(adId || "");
       const adLabelAttr = frappe.utils.escape_html(adLabel || "");
