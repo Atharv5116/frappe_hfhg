@@ -13,6 +13,7 @@
   "gst_amount",
   "total_amount",
   "ad_name",
+  "meta_ad_id",
   "custom_upload_campaignad_expense_file_"
  ],
  "fields": [
@@ -54,6 +55,13 @@
    "fieldname": "ad_name",
    "fieldtype": "Data",
    "label": "Ad Name"
+  },
+  {
+   "fieldname": "meta_ad_id",
+   "fieldtype": "Link",
+   "label": "Ad ID",
+   "options": "Meta Ads",
+   "in_list_view": 1
   },
   {
    "fieldname": "custom_upload_campaignad_expense_file_",

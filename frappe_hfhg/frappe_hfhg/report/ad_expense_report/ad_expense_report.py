@@ -97,339 +97,485 @@ def get_columns(filters: Filters) -> list[dict]:
     return columns
 
 def get_data(filters: Filters) -> list[dict]:
-    # Get all ads that have either expenses or revenue
-    ads_data = get_ads_with_activity(filters)
-    
-    rows = []
-    # Group ads by ad_name only (not by source)
-    ad_names = list(set([ad.get("ad_name") for ad in ads_data]))
-    
-    for ad_name in ad_names:
-        # Get total expenses for this ad (within date range)
-        total_expense = get_ad_expenses(filters, ad_name)
-        
-        # Always get revenue from ALL sources
-        lifetime_revenue = get_ad_revenue(filters, ad_name, None, lifetime=True)
-        period_revenue = get_ad_revenue(filters, ad_name, None, lifetime=False)
-        
-        # Get the source for this ad from the Lead table
-        source = get_ad_source(ad_name)
-        
-        # Get ad display name and status from Meta Ads
-        ad_details = get_ad_details(ad_name)
-        
-        # Get ad creation date from Meta Lead Form
-        ad_created_date = get_ad_created_date(ad_name)
-        
-        # Net profit is based on period revenue from all sources
+    # Aggregate expenses and revenues using Meta Ads as the canonical reference
+    expense_map, expense_fallback_names = get_campaign_expense_summary(filters)
+    revenue_period_map, revenue_period_fallbacks = get_surgery_revenue_summary(filters, lifetime=False)
+    revenue_lifetime_map, revenue_lifetime_fallbacks = get_surgery_revenue_summary(filters, lifetime=True)
+
+    all_canonical_ids: set[str] = set(expense_map.keys())
+    all_canonical_ids.update(revenue_period_map.keys())
+    all_canonical_ids.update(revenue_lifetime_map.keys())
+
+    if not all_canonical_ids:
+        return []
+
+    # Merge fallback names (used for display and secondary lookups)
+    all_fallback_names: dict[str, str] = {}
+    all_fallback_names.update(expense_fallback_names)
+    all_fallback_names.update(revenue_period_fallbacks)
+    all_fallback_names.update(revenue_lifetime_fallbacks)
+
+    # Fetch metadata keyed by canonical Meta Ads docname
+    meta_details = get_meta_ads_details(list(all_canonical_ids), all_fallback_names)
+    creation_dates = get_meta_lead_form_dates(all_canonical_ids, all_fallback_names)
+    sources = get_lead_sources_for_canonical_ids(all_canonical_ids, all_fallback_names)
+
+    rows: list[dict] = []
+    for canonical_id in sorted(all_canonical_ids, key=lambda value: (all_fallback_names.get(value) or value)):
+        period_revenue = float(revenue_period_map.get(canonical_id, 0.0))
+        total_expense = float(expense_map.get(canonical_id, 0.0))
+
+        # Skip rows that have neither expense nor revenue in the filtered range
+        if total_expense == 0 and period_revenue == 0:
+            continue
+
+        lifetime_revenue = float(revenue_lifetime_map.get(canonical_id, 0.0))
+        meta = meta_details.get(canonical_id, {
+            "ad_id": canonical_id,
+            "ads_name": all_fallback_names.get(canonical_id) or canonical_id,
+            "status": "",
+        })
+
+        display_name = meta.get("ads_name") or all_fallback_names.get(canonical_id) or canonical_id
+        status = meta.get("status") or ""
+        ad_created_date = creation_dates.get(canonical_id)
         net_profit = period_revenue - total_expense
-        
-        # Calculate ROI percentage based on period revenue from all sources
-        roi_percent = 0
-        if total_expense > 0:
-            roi_percent = ((period_revenue - total_expense) / total_expense) * 100
-        
-        row = {
-            "ad_id": ad_name,  # ad_name is actually the ad_id (document name)
-            "ad_display_name": ad_details.get("ads_name", ad_name),
-            "ad_status": ad_details.get("status", ""),
+        roi_percent = ((period_revenue - total_expense) / total_expense * 100) if total_expense else 0.0
+
+        rows.append({
+            "ad_id": meta.get("ad_id") or canonical_id,
+            "ad_display_name": display_name,
+            "ad_status": status,
             "ad_created_date": ad_created_date,
-            "source": source,
+            "source": sources.get(canonical_id, ""),
             "total_expense": total_expense,
             "lifetime_revenue": lifetime_revenue,
             "period_revenue": period_revenue,
             "net_profit": net_profit,
             "roi_percent": roi_percent,
             "details_button": _("Details"),
-        }
-        rows.append(row)
-    
+        })
+
     return rows
 
-def get_ads_with_activity(filters: Filters) -> list[dict]:
-    """Get all unique ads that have either expenses or revenue, grouped by source"""
-    query = """
-        SELECT DISTINCT ad_name, source
-        FROM (
-            -- Ads from Campaign Expense
-            SELECT DISTINCT ce.ad_name, NULL as source
-            FROM `tabCampaign Expense` ce
-            WHERE ce.ad_name IS NOT NULL 
-            AND ce.ad_name != ''
-            AND ce.date BETWEEN %(from_date)s AND %(to_date)s
-            
-            UNION
-            
-            -- Ads from Leads (that have payments via Surgery within date range OR all time)
-            SELECT DISTINCT l.ad_name, l.source
-            FROM `tabLead` l
-            INNER JOIN (
-                -- Leads with payments via Surgery
-                SELECT DISTINCT c.patient
-                FROM `tabSurgery` s
-                INNER JOIN `tabCosting` c ON s.patient = c.name
-                INNER JOIN `tabPayment` p ON p.patient = s.name
-                WHERE p.type = 'Payment'
-                AND p.payment_type = 'Surgery'
-                AND (
-                    p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
-                    OR p.transaction_date IS NULL
-                )
-            ) AS leads_with_payments ON l.name = leads_with_payments.patient
-            WHERE l.ad_name IS NOT NULL 
-            AND l.ad_name != ''
-        ) AS ads_activity
-        WHERE ad_name IS NOT NULL AND ad_name != ''
-        ORDER BY ad_name, source
-    """
-    
+
+def normalize_identifier(value: str | None) -> str:
+    return str(value).strip() if value else ""
+
+
+def make_identifier_tuple(values: set[str]) -> tuple[str, ...]:
+    cleaned = tuple(sorted({normalize_identifier(v) for v in values if normalize_identifier(v)}))
+    return cleaned
+
+
+def cast_to_float(value) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, str]]:
+    """Get ad identifiers from surgery payments in the date range."""
     params = {
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
     }
     
-    # Apply ad name filter if provided
-    ad_name_filter = (filters.get("ad_name") or "").strip()
-    if ad_name_filter:
-        # Add ad name filter to WHERE clause
-        query = query.replace(
-            "WHERE ad_name IS NOT NULL AND ad_name != ''",
-            "WHERE ad_name IS NOT NULL AND ad_name != '' AND ad_name LIKE %(ad_name_filter)s"
-        )
-        params["ad_name_filter"] = f"%{ad_name_filter}%"
-    
-    ads = frappe.db.sql(query, params, as_dict=True)
-    
-    # Filter: only keep ads that have expense OR revenue WITHIN THE SELECTED DATE RANGE
-    # The source filter should NOT affect which ads are displayed - it only affects the Source Revenue column
-    filtered_ads = []
-    seen_ad_names = set()
-    
-    for ad_info in ads:
-        ad_name = ad_info.get("ad_name")
-        
-        # Only process each ad once (not per source)
-        if ad_name in seen_ad_names:
-            continue
-        seen_ad_names.add(ad_name)
-        
-        # Check if ad has expense within date range
-        has_expense = get_ad_expenses(filters, ad_name) > 0
-        
-        # ALWAYS check if ad has revenue from ANY source (regardless of source filter)
-        # The source filter should only affect the Source Revenue column, not which ads appear
-        has_revenue = get_ad_revenue(filters, ad_name, None, lifetime=False) > 0
-        
-        if has_expense or has_revenue:
-            filtered_ads.append(ad_info)
-    
-    return filtered_ads
-
-def get_ad_source(ad_name: str) -> str:
-    """Get the source for a specific ad from the Lead table"""
-    query = """
-        SELECT l.source
-        FROM `tabLead` l
-        WHERE l.ad_name = %(ad_name)s
-        AND l.source IS NOT NULL
-        AND l.source != ''
-        LIMIT 1
-    """
-    
-    result = frappe.db.sql(query, {"ad_name": ad_name}, as_dict=True)
-    return result[0].get("source", "") if result else ""
-
-def get_ad_details(ad_id: str) -> dict:
-    """Get ad display name and status from Meta Ads doctype"""
-    try:
-        # Check if Meta Ads exists
-        if not frappe.db.exists("Meta Ads", ad_id):
-            return {"ads_name": ad_id, "status": ""}
-        
-        # Fetch ad details
-        ad = frappe.db.get_value(
-            "Meta Ads",
-            ad_id,
-            ["ads_name", "status"],
-            as_dict=True
-        )
-        
-        if ad:
-            return {
-                "ads_name": ad.get("ads_name") or ad_id,
-                "status": ad.get("status") or ""
-            }
-        else:
-            return {"ads_name": ad_id, "status": ""}
-    except Exception:
-        # If any error, return the ad_id as name
-        return {"ads_name": ad_id, "status": ""}
-
-def get_ad_created_date(ad_id: str) -> str | None:
-    """Get ad creation date from Meta Lead Form doctype"""
-    try:
-        # Query Meta Lead Form for created_at date where ads field matches ad_id
-        query = """
-            SELECT created_at
-            FROM `tabMeta Lead Form`
-            WHERE ads = %(ad_id)s
-            ORDER BY created_at ASC
-            LIMIT 1
+    rows = frappe.db.sql(
         """
-        
-        result = frappe.db.sql(query, {"ad_id": ad_id}, as_dict=True)
-        
-        if result and result[0].get("created_at"):
-            # Return only the date part (YYYY-MM-DD)
-            created_at = result[0].get("created_at")
-            if created_at:
-                return str(created_at).split()[0]  # Get date part only
-        
-        return None
-    except Exception:
-        # If any error, return None
-        return None
-
-def get_ad_expenses(filters: Filters, ad_name: str) -> float:
-    """Get total expenses for a specific ad within the date range"""
-    query = """
-        SELECT COALESCE(SUM(CAST(ce.total_amount AS DECIMAL(10,2))), 0) as total_expense
-        FROM `tabCampaign Expense` ce
-        WHERE ce.date BETWEEN %(from_date)s AND %(to_date)s
-        AND ce.ad_name = %(ad_name)s
-    """
+        SELECT DISTINCT
+            COALESCE(ma.name, TRIM(l.ad_name)) AS ad_identifier,
+            MIN(TRIM(l.ad_name)) AS fallback_ad_name
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+          AND l.ad_name IS NOT NULL
+          AND l.ad_name != ''
+        GROUP BY ad_identifier
+        HAVING ad_identifier IS NOT NULL AND ad_identifier != ''
+        """,
+        params,
+        as_dict=True,
+    )
     
+    identifiers: list[str] = []
+    fallback_names: dict[str, str] = {}
+    
+    for row in rows:
+        identifier = normalize_identifier(row.get("ad_identifier"))
+        if not identifier:
+            continue
+        if identifier not in identifiers:
+            identifiers.append(identifier)
+        fallback_name = normalize_identifier(row.get("fallback_ad_name"))
+        if fallback_name:
+            fallback_names[identifier] = fallback_name
+    
+    return identifiers, fallback_names
+
+
+def get_campaign_expense_summary(filters: Filters) -> tuple[dict[str, float], dict[str, str]]:
     params = {
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
-        "ad_name": ad_name,
     }
-    
-    result = frappe.db.sql(query, params, as_dict=True)
-    return float(result[0].get("total_expense", 0)) if result else 0.0
+    ad_name_filter = normalize_identifier(filters.get("ad_name"))
 
-def get_ad_revenue(filters: Filters, ad_name: str, source: str | None, lifetime: bool = False) -> float:
-    """Get revenue for a specific ad and source.
-    
-    Args:
-        filters: Report filters
-        ad_name: The ad name
-        source: The source (can be None for all sources)
-        lifetime: If True, get all-time revenue. If False, get revenue within date range.
-    """
-    
-    # Build the date condition
+    filter_clause = ""
+    if ad_name_filter:
+        params["ad_name_filter"] = f"%{ad_name_filter}%"
+        filter_clause = "AND TRIM(ce.ad_name) LIKE %(ad_name_filter)s"
+
+    records = frappe.db.sql(
+        f"""
+        SELECT 
+            CASE
+                WHEN ce.meta_ad_id IS NOT NULL AND ce.meta_ad_id != '' THEN ce.meta_ad_id
+                WHEN ma_by_ads.name IS NOT NULL THEN ma_by_ads.name
+                ELSE TRIM(ce.ad_name)
+            END AS canonical_id,
+            COALESCE(ma_by_id.ads_name, ma_by_ads.ads_name, TRIM(ce.ad_name)) AS display_name,
+            COALESCE(SUM(
+                CASE 
+                    WHEN ce.total_amount IS NOT NULL AND ce.total_amount != ''
+                    THEN CAST(ce.total_amount AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS total_expense
+        FROM `tabCampaign Expense` ce
+        LEFT JOIN `tabMeta Ads` ma_by_id ON ma_by_id.name = ce.meta_ad_id
+        LEFT JOIN `tabMeta Ads` ma_by_ads ON TRIM(ma_by_ads.ads_name) = TRIM(ce.ad_name)
+        WHERE ce.ad_name IS NOT NULL
+          AND ce.ad_name != ''
+          AND ce.date BETWEEN %(from_date)s AND %(to_date)s
+          {filter_clause}
+        GROUP BY canonical_id, display_name
+        HAVING canonical_id IS NOT NULL AND canonical_id != ''
+        ORDER BY canonical_id
+        """,
+        params,
+        as_dict=True,
+    )
+
+    expense_map: dict[str, float] = {}
+    fallback_names: dict[str, str] = {}
+
+    for row in records:
+        canonical_id = normalize_identifier(row.get("canonical_id"))
+        if not canonical_id:
+            continue
+        expense_map[canonical_id] = cast_to_float(row.get("total_expense"))
+        display_name = normalize_identifier(row.get("display_name"))
+        if display_name:
+            fallback_names[canonical_id] = display_name
+
+    return expense_map, fallback_names
+
+
+def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[str, float], dict[str, str]]:
     date_condition = ""
+    params: dict[str, object] = {}
     if not lifetime:
         date_condition = "AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s"
-    
-    # Query to get only Surgery payments
-    query = f"""
+        params.update({
+            "from_date": filters.get("from_date"),
+            "to_date": filters.get("to_date"),
+        })
+
+    revenue_rows = frappe.db.sql(
+        f"""
         SELECT 
+            CASE
+                WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
+                WHEN ma_by_ads.name IS NOT NULL THEN ma_by_ads.name
+                ELSE TRIM(l.ad_name)
+            END AS canonical_id,
+            COALESCE(ma_by_name.ads_name, ma_by_ads.ads_name, TRIM(l.ad_name)) AS display_name,
             COALESCE(SUM(
                 CASE 
                     WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
-                    THEN CAST(p.total_amount_received AS DECIMAL(10,2))
+                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
                     ELSE 0
                 END
-            ), 0) as revenue
+            ), 0) AS revenue
         FROM `tabPayment` p
-        INNER JOIN (
-            -- Payments via Surgery only
-            SELECT s.name as payment_patient, l.source, l.ad_name
-            FROM `tabSurgery` s
-            INNER JOIN `tabCosting` c ON s.patient = c.name
-            INNER JOIN `tabLead` l ON c.patient = l.name
-            WHERE l.ad_name = %(ad_name)s
-        ) AS lead_data ON p.patient = lead_data.payment_patient
-        WHERE p.type = 'Payment'
-        AND p.payment_type = 'Surgery'
-        {date_condition}
-    """
-    
-    # Add source filter if specified (ignore empty strings)
-    if source and source.strip():
-        query += " AND lead_data.source = %(source)s"
-    
-    params = {
-        "ad_name": ad_name,
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_ads ON TRIM(ma_by_ads.ads_name) = TRIM(l.ad_name)
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          {date_condition}
+        GROUP BY canonical_id, display_name
+        HAVING canonical_id IS NOT NULL AND canonical_id != ''
+        """,
+        params,
+        as_dict=True,
+    )
+
+    revenue_map: dict[str, float] = {}
+    fallback_names: dict[str, str] = {}
+
+    for row in revenue_rows:
+        canonical_id = normalize_identifier(row.get("canonical_id"))
+        if not canonical_id:
+            continue
+        revenue_map[canonical_id] = cast_to_float(row.get("revenue"))
+        display_name = normalize_identifier(row.get("display_name"))
+        if display_name:
+            fallback_names[canonical_id] = display_name
+
+    return revenue_map, fallback_names
+
+
+def get_meta_ads_details(canonical_ids: list[str], fallback_names: dict[str, str]) -> dict[str, dict]:
+    details: dict[str, dict] = {}
+    canonical_tuple = make_identifier_tuple(set(canonical_ids))
+
+    if canonical_tuple:
+        rows = frappe.db.sql(
+            """
+            SELECT name, ads_name, status
+            FROM `tabMeta Ads`
+            WHERE name IN %(names)s
+            """,
+            {"names": canonical_tuple},
+            as_dict=True,
+        )
+        for row in rows:
+            identifier = normalize_identifier(row.get("name"))
+            if not identifier:
+                continue
+            details[identifier] = {
+                "ad_id": row.get("name"),
+                "ads_name": row.get("ads_name") or fallback_names.get(identifier) or identifier,
+                "status": row.get("status") or "",
+            }
+
+    # Populate fallbacks for canonical IDs that are not Meta Ads docnames
+    for canonical_id in canonical_ids:
+        if canonical_id not in details:
+            fallback = fallback_names.get(canonical_id)
+            details[canonical_id] = {
+                "ad_id": canonical_id,
+                "ads_name": fallback or canonical_id,
+                "status": "",
+            }
+
+    return details
+
+
+def get_meta_lead_form_dates(canonical_ids: set[str], fallback_names: dict[str, str]) -> dict[str, str | None]:
+    lookup_values = {normalize_identifier(value) for value in canonical_ids}
+    lookup_values.update({normalize_identifier(name) for name in fallback_names.values() if name})
+
+    id_tuple = make_identifier_tuple(lookup_values)
+    if not id_tuple:
+        return {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT ads, MIN(created_at) AS created_at
+        FROM `tabMeta Lead Form`
+        WHERE ads IN %(ids)s
+        GROUP BY ads
+        """,
+        {"ids": id_tuple},
+        as_dict=True,
+    )
+
+    # Build reverse lookup for fallback names
+    fallback_to_canonical = {
+        normalize_identifier(value): key
+        for key, value in fallback_names.items()
+        if normalize_identifier(value)
     }
-    
-    if not lifetime:
-        params["from_date"] = filters.get("from_date")
-        params["to_date"] = filters.get("to_date")
-    
-    if source and source.strip():
-        params["source"] = source.strip()
-    
-    # Execute query
-    result = frappe.db.sql(query, params, as_dict=True)
-    
-    return float(result[0].get("revenue", 0)) if result else 0.0
+
+    creation_map: dict[str, str | None] = {}
+    canonical_set = {normalize_identifier(value) for value in canonical_ids}
+
+    for row in rows:
+        ads_value = normalize_identifier(row.get("ads"))
+        if not ads_value:
+            continue
+        if ads_value in canonical_set:
+            canonical_id = ads_value
+        else:
+            canonical_id = fallback_to_canonical.get(ads_value)
+        if not canonical_id:
+            continue
+        creation_map[canonical_id] = str(row.get("created_at")).split()[0] if row.get("created_at") else None
+
+    return creation_map
+
+
+def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: dict[str, str]) -> dict[str, str]:
+    if not canonical_ids and not fallback_names:
+        return {}
+
+    canonical_tuple = make_identifier_tuple(set(canonical_ids)) if canonical_ids else tuple()
+    lookup_values = {normalize_identifier(value) for value in fallback_names.values() if value}
+    lookup_values.update({normalize_identifier(value) for value in canonical_ids})
+    lookup_tuple = make_identifier_tuple(lookup_values) if lookup_values else tuple()
+
+    filter_clauses: list[str] = []
+    params: dict[str, object] = {}
+
+    if canonical_tuple:
+        params["canonical_ids"] = canonical_tuple
+        filter_clauses.append("ma_by_name.name IN %(canonical_ids)s")
+        filter_clauses.append("ma_by_ads.name IN %(canonical_ids)s")
+    if lookup_tuple:
+        params["lookup_values"] = lookup_tuple
+        filter_clauses.append("TRIM(l.ad_name) IN %(lookup_values)s")
+
+    if not filter_clauses:
+        return {}
+
+    where_matcher = " AND (" + " OR ".join(filter_clauses) + ")"
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT 
+            CASE
+                WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
+                WHEN ma_by_ads.name IS NOT NULL THEN ma_by_ads.name
+                ELSE TRIM(l.ad_name)
+            END AS canonical_id,
+            l.source
+        FROM `tabLead` l
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN `tabMeta Ads` ma_by_ads ON TRIM(ma_by_ads.ads_name) = TRIM(l.ad_name)
+        WHERE l.source IS NOT NULL
+          AND l.source != ''
+          AND l.ad_name IS NOT NULL
+          AND l.ad_name != ''
+          {where_matcher}
+        ORDER BY l.modified DESC
+        """,
+        params,
+        as_dict=True,
+    )
+
+    source_map: dict[str, str] = {}
+    for row in rows:
+        canonical_id = normalize_identifier(row.get("canonical_id"))
+        if not canonical_id or canonical_id in source_map:
+            continue
+        source_map[canonical_id] = row.get("source") or ""
+
+    return source_map
+
+
+def get_surgery_date_clause() -> str:
+    return "COALESCE(s.surgery_date, DATE(s.creation))"
+
 
 @frappe.whitelist()
 def get_ad_activity_stats(ad_id: str, from_date: str | None = None, to_date: str | None = None) -> dict:
-    """Return all-time lead, costing payment, surgery, and consultation counts for a given ad (ignores date filters)"""
-    if not ad_id:
+    """Return lead, consultation, costing payment, and surgery counts for an ad within the selected period."""
+    ad_identifier = normalize_identifier(ad_id)
+    if not ad_identifier:
         frappe.throw(_("Ad ID is required"), title=_("Missing Ad ID"))
-    
-    params: dict[str, str] = {"ad_id": ad_id}
-    
-    # All-time data - no date filtering
+
+    if not from_date or not to_date:
+        frappe.throw(_("From Date and To Date are required"), title=_("Missing Date Range"))
+
+    from_date = str(from_date)
+    to_date = str(to_date)
+    end_date = str(frappe.utils.add_days(to_date, 1))
+
+    params = {
+        "ad_identifier": ad_identifier,
+        "from_datetime": f"{from_date} 00:00:00",
+        "to_datetime": f"{end_date} 00:00:00",
+        "from_date": from_date,
+        "to_date": to_date,
+    }
+
     total_leads = frappe.db.sql(
         """
         SELECT COUNT(*)
         FROM `tabLead` l
+        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
         WHERE l.docstatus < 2
-          AND l.ad_name = %(ad_id)s
+          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND l.creation >= %(from_datetime)s
+          AND l.creation < %(to_datetime)s
         """,
         params,
     )[0][0] or 0
-    
-    costing_payment_count = frappe.db.sql(
-        """
-        SELECT COUNT(*)
-        FROM `tabPayment` p
-        INNER JOIN `tabCosting` c ON p.patient = c.name
-        INNER JOIN `tabLead` l ON c.patient = l.name
-        WHERE p.docstatus < 2
-          AND p.type = 'Payment'
-          AND p.payment_type = 'Costing'
-          AND l.docstatus < 2
-          AND l.ad_name = %(ad_id)s
-        """,
-        params,
-    )[0][0] or 0
-    
-    surgery_created_count = frappe.db.sql(
-        """
-        SELECT COUNT(*)
-        FROM `tabSurgery` s
-        INNER JOIN `tabCosting` c ON s.patient = c.name
-        INNER JOIN `tabLead` l ON c.patient = l.name
-        WHERE s.docstatus < 2
-          AND c.docstatus < 2
-          AND l.docstatus < 2
-          AND l.ad_name = %(ad_id)s
-        """,
-        params,
-    )[0][0] or 0
-    
-    consultation_created_count = frappe.db.sql(
+
+    consultations = frappe.db.sql(
         """
         SELECT COUNT(*)
         FROM `tabConsultation` cons
         INNER JOIN `tabLead` l ON l.name = cons.patient
+        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
         WHERE cons.docstatus < 2
           AND l.docstatus < 2
-          AND l.ad_name = %(ad_id)s
+          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND cons.date BETWEEN %(from_date)s AND %(to_date)s
         """,
         params,
     )[0][0] or 0
-    
+
+    booked_leads = frappe.db.sql(
+        """
+        SELECT COUNT(DISTINCT l.name)
+        FROM `tabPayment` p
+        INNER JOIN `tabCosting` c ON p.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Costing'
+          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+        """,
+        params,
+    )[0][0] or 0
+
+    surgeries_completed = frappe.db.sql(
+        f"""
+        SELECT COUNT(DISTINCT s.name)
+        FROM `tabSurgery` s
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        LEFT JOIN `tabMeta Ads` ma ON ma.name = l.ad_name OR ma.ads_name = l.ad_name
+        LEFT JOIN `tabPayment` p ON p.patient = s.name
+            AND p.docstatus < 2
+            AND p.type = 'Payment'
+            AND p.payment_type = 'Surgery'
+        WHERE s.docstatus < 2
+          AND c.docstatus < 2
+          AND l.docstatus < 2
+          AND COALESCE(ma.name, TRIM(l.ad_name)) = %(ad_identifier)s
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND {get_surgery_date_clause()} BETWEEN %(from_date)s AND %(to_date)s
+        """,
+        params,
+    )[0][0] or 0
+
     return {
-        "total_leads": total_leads,
-        "costing_payments": costing_payment_count,
-        "surgery_created": surgery_created_count,
-        "consultation_created": consultation_created_count,
+        "leads_created": int(total_leads),
+        "consultations_created": int(consultations),
+        "booked_leads": int(booked_leads),
+        "surgeries_completed": int(surgeries_completed),
+        # Backwards-compatible aliases
+        "total_leads": int(total_leads),
+        "costing_payments": int(booked_leads),
+        "surgery_created": int(surgeries_completed),
+        "consultation_created": int(consultations),
     }
