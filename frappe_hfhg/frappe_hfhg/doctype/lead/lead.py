@@ -11,8 +11,56 @@ import random
 from datetime import datetime
 from frappe.utils import today
 
+AUTO_LINK_SOURCE_EXCLUSIONS = {"META", "FACEBOOK", "INSTAGRAM"}
+
+
+def auto_link_ad_name_from_source(lead_doc: Document) -> None:
+	source_value = (getattr(lead_doc, "source", "") or "").strip()
+	if not source_value:
+		return
+	if source_value.upper() in AUTO_LINK_SOURCE_EXCLUSIONS:
+		return
+
+	meta_ad_name = frappe.db.get_value("Meta Ads", {"ads_name": source_value}, "name")
+	if not meta_ad_name:
+		meta_ad_name = frappe.db.sql(
+			"""
+			SELECT name
+			FROM `tabMeta Ads`
+			WHERE UPPER(TRIM(ads_name)) = UPPER(TRIM(%s))
+			LIMIT 1
+			""",
+			source_value,
+		)
+		meta_ad_name = meta_ad_name[0][0] if meta_ad_name else None
+
+	if meta_ad_name:
+		existing_ad_name = (getattr(lead_doc, "ad_name", "") or "").strip()
+		if not existing_ad_name:
+			lead_doc.ad_name = meta_ad_name
+			return
+
+		source_changed = False
+		if hasattr(lead_doc, "get_doc_before_save"):
+			try:
+				old_doc = lead_doc.get_doc_before_save()
+			except Exception:  # pragma: no cover - defensive
+				old_doc = None
+			if old_doc:
+				old_source = (getattr(old_doc, "source", "") or "").strip()
+				source_changed = old_source != source_value
+
+		if existing_ad_name != meta_ad_name:
+			existing_is_meta_name = frappe.db.exists("Meta Ads", {"name": existing_ad_name})
+			if source_changed or not existing_is_meta_name:
+				lead_doc.ad_name = meta_ad_name
+			elif not existing_is_meta_name and frappe.db.exists("Meta Ads", {"ads_name": existing_ad_name}):
+				lead_doc.ad_name = meta_ad_name
+
+
 class Lead(Document):
 	def validate(self):
+		auto_link_ad_name_from_source(self)
 		self.contact_number_copy = self.contact_number.split("-")[-1] if self.contact_number else None
 		self.alternative_number_copy = self.alternative_number.split("-")[-1] if self.alternative_number else None
 
@@ -101,6 +149,7 @@ class Lead(Document):
 					)
 
 	def before_save(self):
+		auto_link_ad_name_from_source(self)
 		self.validate_child_table_descriptions("reminders", "description", 100000)
 		self.validate_child_table_descriptions("conversations", "description", 100000)
 		old_doc = self.get_doc_before_save()
@@ -158,6 +207,7 @@ class Lead(Document):
 
 	
 	def before_insert(self):
+		auto_link_ad_name_from_source(self)
 		assignee_doctype, assign_to = None, None  # Ensure these variables are always defined
 
 		if self.campaign_name:
@@ -772,6 +822,7 @@ def sync_executive_to_duplicates(lead_name):
 		frappe.logger().error(f"Error syncing executive to duplicates for {lead_name}: {str(e)}")
 		frappe.log_error(f"Error syncing executive to duplicates: {str(e)}", "Lead Executive Sync")
 		return 0
+
 
 @frappe.whitelist()
 def sync_executive_to_original_lead(duplicate_lead):
