@@ -130,6 +130,9 @@ doc_events = {
         "on_update": ["frappe_hfhg.api.whatsapp.on_update"],
         # "after_insert": "frappe_hfhg.tasks.whatsapp_message_notification"
     },
+    "Meta Ads": {
+        "validate": ["frappe_hfhg.api.meta_ads.clean_meta_ads_name"],
+    },
     "Lead": {
         "after_insert": ["frappe_hfhg.api.after_insert_lead_logs"],
     }

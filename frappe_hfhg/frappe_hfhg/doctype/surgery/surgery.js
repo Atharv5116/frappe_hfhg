@@ -3,14 +3,21 @@
 
 frappe.ui.form.on("Surgery", {
   onload: function (frm) {
+    // Always make surgery_date read-only
+    frm.set_df_property("surgery_date", "read_only", 1);
+    
     // Check if surgery date has passed and make all fields read-only
     if (!frm.is_new() && frm.doc.surgery_date) {
-      const surgery_date_passed = 
-        frappe.datetime.str_to_obj(frm.doc.surgery_date) < 
+      const surgery_date_passed =
+        frappe.datetime.str_to_obj(frm.doc.surgery_date) <
         frappe.datetime.str_to_obj(frappe.datetime.get_today());
-      
-      if (surgery_date_passed) {
+      const pending_amount = frm.doc.pending_amount || 0;
+      const should_lock = surgery_date_passed && pending_amount === 0;
+
+      if (should_lock) {
         make_all_fields_read_only(frm);
+      } else {
+        make_fields_editable(frm);
       }
     }
     
@@ -39,6 +46,9 @@ frappe.ui.form.on("Surgery", {
   },
 
   refresh(frm) {
+    // Always make surgery_date read-only
+    frm.set_df_property("surgery_date", "read_only", 1);
+    
     if (!frm.is_new()) {
       // Add Upload Lead Image button
       if (frm.doc.patient) {
@@ -55,9 +65,10 @@ frappe.ui.form.on("Surgery", {
       }
       
       // Check if surgery date has passed AND pending_amount is 0
-      const surgery_date_passed = frm.doc.surgery_date && 
-        frappe.datetime.str_to_obj(frm.doc.surgery_date) < 
-        frappe.datetime.str_to_obj(frappe.datetime.get_today());
+      const surgery_date_passed =
+        frm.doc.surgery_date &&
+        frappe.datetime.str_to_obj(frm.doc.surgery_date) <
+          frappe.datetime.str_to_obj(frappe.datetime.get_today());
       const pending_amount = frm.doc.pending_amount || 0;
       const should_hide_buttons = surgery_date_passed && pending_amount === 0;
       
@@ -458,6 +469,9 @@ frappe.ui.form.on("Surgery", {
     }
   },
   surgery_date(frm) {
+    // Always keep surgery_date read-only
+    frm.set_df_property("surgery_date", "read_only", 1);
+    
     frm.trigger("toggle_grafts_read_only");
     // Check if surgery date has passed and make all fields read-only
     if (!frm.is_new() && frm.doc.surgery_date) {
@@ -466,7 +480,12 @@ frappe.ui.form.on("Surgery", {
         frappe.datetime.str_to_obj(frappe.datetime.get_today());
       
       if (surgery_date_passed) {
-        make_all_fields_read_only(frm);
+        const pending_amount = frm.doc.pending_amount || 0;
+        if (pending_amount === 0) {
+          make_all_fields_read_only(frm);
+        } else {
+          make_fields_editable(frm);
+        }
       } else {
         // If date is in future, make fields editable again (except those that should always be read-only)
         make_fields_editable(frm);
@@ -760,7 +779,7 @@ function make_fields_editable(frm) {
   }
   
   const fields_to_unlock = [
-    "surgery_date", "grafts", "graft_price", "total_amount", "discount_amount",
+    "grafts", "graft_price", "total_amount", "discount_amount",
     "doctor", "center", "technique", "prp", "note", "surgery_status",
     "executive", "assign_by", "amount_paid", "pending_amount", "pending_grafts",
     "contact_number", "cancel_type", "reason_for_cancel"
@@ -768,8 +787,8 @@ function make_fields_editable(frm) {
   
   fields_to_unlock.forEach(field => {
     if (frm.fields_dict[field]) {
-      // Don't unlock patient, booking_date, or other fields that should always be read-only
-      if (field !== "patient" && field !== "booking_date") {
+      // Don't unlock patient, booking_date, surgery_date, or other fields that should always be read-only
+      if (field !== "patient" && field !== "booking_date" && field !== "surgery_date") {
         frm.set_df_property(field, "read_only", 0);
       }
     }
