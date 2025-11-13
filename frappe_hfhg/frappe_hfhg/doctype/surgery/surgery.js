@@ -3,6 +3,17 @@
 
 frappe.ui.form.on("Surgery", {
   onload: function (frm) {
+    // Check if surgery date has passed and make all fields read-only
+    if (!frm.is_new() && frm.doc.surgery_date) {
+      const surgery_date_passed = 
+        frappe.datetime.str_to_obj(frm.doc.surgery_date) < 
+        frappe.datetime.str_to_obj(frappe.datetime.get_today());
+      
+      if (surgery_date_passed) {
+        make_all_fields_read_only(frm);
+      }
+    }
+    
     if (!frm.is_new()) {
       if (frm.doc.surgery_status == "Completed") {
         if (!frappe.user_roles.includes("System Manager")) {
@@ -28,7 +39,6 @@ frappe.ui.form.on("Surgery", {
   },
 
   refresh(frm) {
-    
     if (!frm.is_new()) {
       // Add Upload Lead Image button
       if (frm.doc.patient) {
@@ -449,6 +459,19 @@ frappe.ui.form.on("Surgery", {
   },
   surgery_date(frm) {
     frm.trigger("toggle_grafts_read_only");
+    // Check if surgery date has passed and make all fields read-only
+    if (!frm.is_new() && frm.doc.surgery_date) {
+      const surgery_date_passed = 
+        frappe.datetime.str_to_obj(frm.doc.surgery_date) < 
+        frappe.datetime.str_to_obj(frappe.datetime.get_today());
+      
+      if (surgery_date_passed) {
+        make_all_fields_read_only(frm);
+      } else {
+        // If date is in future, make fields editable again (except those that should always be read-only)
+        make_fields_editable(frm);
+      }
+    }
   },
   toggle_grafts_read_only(frm) {
     if (!frm.fields_dict.grafts_surgeries) return;
@@ -694,4 +717,75 @@ function show_unified_image_dialog(frm) {
 
     d.show();
     load_images();
+}
+
+// Helper function to make all fields read-only when surgery date has passed
+function make_all_fields_read_only(frm) {
+  // List of all main fields in Surgery doctype
+  const fields_to_lock = [
+    "surgery_date", "grafts", "graft_price", "total_amount", "discount_amount",
+    "doctor", "center", "technique", "prp", "grafts_surgeries", 
+    "blood_test_table", "note", "bt_status", "surgery_status", "status",
+    "patient", "executive", "assign_by", "previous_executive", "executive_changed_date",
+    "booking_date", "amount_paid", "pending_amount", "pending_grafts",
+    "contact_number", "cancel_type", "reason_for_cancel", "postpone_surgery"
+  ];
+  
+  fields_to_lock.forEach(field => {
+    if (frm.fields_dict[field]) {
+      frm.set_df_property(field, "read_only", 1);
+    }
+  });
+  
+  // Also lock child table fields
+  if (frm.fields_dict.grafts_surgeries) {
+    frm.fields_dict.grafts_surgeries.grid.update_docfield_property("grafts", "read_only", 1);
+  }
+  if (frm.fields_dict.blood_test_table) {
+    frm.fields_dict.blood_test_table.grid.update_docfield_property("test_name", "read_only", 1);
+    frm.fields_dict.blood_test_table.grid.update_docfield_property("test_result", "read_only", 1);
+  }
+  if (frm.fields_dict.postpone_surgery) {
+    frm.fields_dict.postpone_surgery.grid.update_docfield_property("postpone_date", "read_only", 1);
+    frm.fields_dict.postpone_surgery.grid.update_docfield_property("reason", "read_only", 1);
+    frm.fields_dict.postpone_surgery.grid.update_docfield_property("old_date", "read_only", 1);
+  }
+}
+
+// Helper function to make fields editable again (when date is in future)
+function make_fields_editable(frm) {
+  // Only make editable if surgery_status is not "Completed" or "Cancelled"
+  if (frm.doc.surgery_status === "Completed" || frm.doc.surgery_status === "Cancelled") {
+    return; // Don't make editable if status is Completed or Cancelled
+  }
+  
+  const fields_to_unlock = [
+    "surgery_date", "grafts", "graft_price", "total_amount", "discount_amount",
+    "doctor", "center", "technique", "prp", "note", "surgery_status",
+    "executive", "assign_by", "amount_paid", "pending_amount", "pending_grafts",
+    "contact_number", "cancel_type", "reason_for_cancel"
+  ];
+  
+  fields_to_unlock.forEach(field => {
+    if (frm.fields_dict[field]) {
+      // Don't unlock patient, booking_date, or other fields that should always be read-only
+      if (field !== "patient" && field !== "booking_date") {
+        frm.set_df_property(field, "read_only", 0);
+      }
+    }
+  });
+  
+  // Keep grafts_surgeries read-only if date is in future (existing logic)
+  if (frm.fields_dict.grafts_surgeries) {
+    const is_future =
+      frm.doc.surgery_date &&
+      frappe.datetime.str_to_obj(frm.doc.surgery_date) >
+        frappe.datetime.str_to_obj(frappe.datetime.get_today());
+    frm.fields_dict.grafts_surgeries.grid.update_docfield_property("grafts", "read_only", is_future ? 1 : 0);
+  }
+  
+  // Keep bt_status read-only for non-Backend users
+  if (!frappe.user_roles.includes("Backend") && frm.fields_dict.bt_status) {
+    frm.set_df_property("bt_status", "read_only", 1);
+  }
 }
