@@ -27,6 +27,11 @@ frappe.ui.form.on("Lead", {
     
     // Apply mandatory field rules based on current status
     apply_mandatory_field_rules(frm);
+    
+    // If source is "References" and source_reference has a value, fetch surgery info
+    if (frm.doc.source === "References" && frm.doc.source_reference) {
+      fetch_reference_surgery_info(frm);
+    }
   },
   
   status: function(frm) {
@@ -101,6 +106,24 @@ frappe.ui.form.on("Lead", {
   },
   last_name: function(frm) {
     update_full_name(frm);
+  },
+  source: function(frm) {
+    // When source changes, handle dynamic source fields
+    handle_dynamic_source_fields(frm);
+    
+    // If source is "References", show the source_reference field and fetch data if it exists
+    if (frm.doc.source === "References" && frm.doc.source_reference) {
+      fetch_reference_surgery_info(frm);
+    } else {
+      // Hide reference surgery info if source is not References
+      frm.set_df_property("reference_surgery_info", "hidden", 1);
+    }
+  },
+  source_reference: function(frm) {
+    // When source_reference field changes, fetch surgery info if source is References
+    if (frm.doc.source === "References") {
+      fetch_reference_surgery_info(frm);
+    }
   },
   refresh(frm) {
     // showWhatsAppTab()
@@ -1644,6 +1667,13 @@ function handle_dynamic_source_fields(frm) {
 
 // Fetch surgery information for reference patient
 function fetch_reference_surgery_info(frm) {
+    if (!frm.doc.source_reference) {
+        console.log("No patient identifier, hiding field");
+        frm.set_df_property("reference_surgery_info", "options", "");
+        frm.set_df_property("reference_surgery_info", "hidden", 1);
+        return;
+    }
+    
     const patient_identifier = frm.doc.source_reference.trim();
     
     console.log("Fetching surgery info for:", patient_identifier);
