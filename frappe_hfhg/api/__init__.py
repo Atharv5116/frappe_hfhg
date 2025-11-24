@@ -861,7 +861,11 @@ def get_dropdown_options():
 @frappe.whitelist()   
 def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
     today = frappe.utils.today()
-    start_date = datetime(year= int(year), month = int(month), day=1)
+    # Validate month is between 1-12
+    month_int = int(month)
+    if month_int < 1 or month_int > 12:
+        frappe.throw(f"Invalid month: {month}. Month must be between 1 and 12.")
+    start_date = datetime(year= int(year), month = month_int, day=1)
     start_date = datetime.strftime(start_date , "%Y-%m-%d")
     end_date = get_last_day(start_date)
 
