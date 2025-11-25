@@ -27,6 +27,11 @@ frappe.ui.form.on("Lead", {
     
     // Apply mandatory field rules based on current status
     apply_mandatory_field_rules(frm);
+    
+    // If source is "References" and source_reference has a value, fetch surgery info
+    if (frm.doc.source === "References" && frm.doc.source_reference) {
+      fetch_reference_surgery_info(frm);
+    }
   },
   
   status: function(frm) {
@@ -101,6 +106,24 @@ frappe.ui.form.on("Lead", {
   },
   last_name: function(frm) {
     update_full_name(frm);
+  },
+  source: function(frm) {
+    // When source changes, handle dynamic source fields
+    handle_dynamic_source_fields(frm);
+    
+    // If source is "References", show the source_reference field and fetch data if it exists
+    if (frm.doc.source === "References" && frm.doc.source_reference) {
+      fetch_reference_surgery_info(frm);
+    } else {
+      // Hide reference surgery info if source is not References
+      frm.set_df_property("reference_surgery_info", "hidden", 1);
+    }
+  },
+  source_reference: function(frm) {
+    // When source_reference field changes, fetch surgery info if source is References
+    if (frm.doc.source === "References") {
+      fetch_reference_surgery_info(frm);
+    }
   },
   refresh(frm) {
     // showWhatsAppTab()
@@ -737,23 +760,26 @@ frappe.call({
               };
 
               document.getElementById("addReminder").onclick = function () {
-                // Check if all reminders are closed
-                const allClosed = frm.doc.reminders.every(
-                  (reminder) => reminder.status === "Close"
+                saveCurrentEdits();
+
+                // Get current user's fullname
+                const currentUserInfo = frappe.user_info(frappe.session.user);
+                const currentUserName = currentUserInfo.fullname;
+
+                // Check if current user already has an open reminder
+                const userHasOpenReminder = frm.doc.reminders.some(
+                  (reminder) => reminder.status === "Open" && reminder.executive === currentUserName
                 );
-                if (!allClosed) {
+                
+                if (userHasOpenReminder) {
                   alert(
-                    "You can only add a new reminder when all existing reminders are closed."
+                    "You already have an open reminder. Please close it before adding a new one."
                   );
                   return;
                 }
 
-                saveCurrentEdits();
-
                 const newReminder = frm.add_child("reminders");
                 const currentDatetime = frappe.datetime.now_datetime();
-                const currentUserInfo = frappe.user_info(frappe.session.user);
-                const currentUserName = currentUserInfo.fullname;
                 newReminder.date = "";
                 newReminder.description = " ";
                 newReminder.status = "Open";
@@ -1152,7 +1178,41 @@ frappe.call({
 frappe.ui.form.on("Reminders", {
   reminders_add(frm, cdt, cdn) {
     var child = locals[cdt][cdn];
-    child.executive = frm.doc.executive;
+    
+    // Set executive to current user (not the lead's executive)
+    const currentUserInfo = frappe.user_info(frappe.session.user);
+    const currentUserName = currentUserInfo.fullname;
+    
+    // Only set executive if not already set (preserves existing reminders)
+    if (!child.executive) {
+      child.executive = currentUserName;
+    }
+    
+    // If this is a new open reminder, check if current user already has one
+    // Exclude the current child by comparing the child document name (cdn)
+    if ((child.status === "Open" || !child.status) && child.executive === currentUserName) {
+      const userHasOpenReminder = frm.doc.reminders.some(
+        (reminder) => {
+          // Get the child document name for comparison
+          const reminderCdn = reminder.name || (reminder.__islocal ? reminder.__name : null);
+          const isCurrentChild = reminderCdn === cdn;
+          return !isCurrentChild &&
+                 reminder.status === "Open" && 
+                 reminder.executive === currentUserName;
+        }
+      );
+      
+      if (userHasOpenReminder) {
+        frappe.msgprint({
+          message: "You already have an open reminder. Please close it before adding a new one.",
+          indicator: "orange",
+          title: "Cannot Add Reminder"
+        });
+        // Set status to Close to prevent adding an open reminder
+        child.status = "Close";
+      }
+    }
+    
     frm.doc.reminders.pop();
     frm.doc.reminders.unshift(child);
     frm.refresh_field("reminders");
@@ -1644,6 +1704,13 @@ function handle_dynamic_source_fields(frm) {
 
 // Fetch surgery information for reference patient
 function fetch_reference_surgery_info(frm) {
+    if (!frm.doc.source_reference) {
+        console.log("No patient identifier, hiding field");
+        frm.set_df_property("reference_surgery_info", "options", "");
+        frm.set_df_property("reference_surgery_info", "hidden", 1);
+        return;
+    }
+    
     const patient_identifier = frm.doc.source_reference.trim();
     
     console.log("Fetching surgery info for:", patient_identifier);
