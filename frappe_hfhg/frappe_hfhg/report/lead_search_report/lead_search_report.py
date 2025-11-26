@@ -40,10 +40,34 @@ def get_columns() -> list[dict]:
 			"width": 190,
 		},
         {
+            "label": _("Source"),
+            "fieldtype": "Data",
+            "fieldname": "source",
+            "width": 150,
+        },
+        {
+            "label": _("Sub Source"),
+            "fieldtype": "Data",
+            "fieldname": "subsource",
+            "width": 150,
+        },
+        {
             "label": _("Status"),
             "fieldtype": "Data",
             "fieldname": "status",
             "width": 160,
+        },
+        {
+            "label": _("Created Date"),
+            "fieldtype": "Date",
+            "fieldname": "created_on",
+            "width": 120,
+        },
+        {
+            "label": _("Show Conversations"),
+            "fieldtype": "Data",
+            "fieldname": "show_conversations",
+            "width": 150,
         },
     ]
 
@@ -54,34 +78,54 @@ def get_data(filters: Filters) -> list[dict]:
     rows = []
     leads = []
     
-    if filters.get("contact_number") or filters.get("name"):
+    # Build query conditions
+    conditions = []
+    params = {}
+    
+    if filters.get("contact_number"):
+        conditions.append("(l.contact_number LIKE %(contact_number)s OR l.alternative_number LIKE %(contact_number)s)")
+        params["contact_number"] = f"%{filters['contact_number']}%"
+
+    if filters.get("name"):
+        conditions.append("l.name LIKE %(name)s")
+        params["name"] = f"%{filters['name']}%"
+    
+    if filters.get("source"):
+        conditions.append("l.source = %(source)s")
+        params["source"] = filters["source"]
+    
+    if filters.get("executive"):
+        conditions.append("l.executive = %(executive)s")
+        params["executive"] = filters["executive"]
+    
+    # Only run query if there are conditions
+    if conditions:
+        where_clause = " AND ".join(conditions)
         query = """
             SELECT 
-                l.name, l.status, l.contact_number, l.alternative_number, l.executive
+                l.name, l.status, l.contact_number, l.alternative_number, l.executive, 
+                l.created_on, l.first_name, l.source, l.subsource
             FROM 
                 `tabLead` l
             WHERE 
-        """
+                {where_clause}
+        """.format(where_clause=where_clause)
         
-        params = {}
-        
-        if filters.get("contact_number"):
-            query += "l.contact_number LIKE %(contact_number)s OR l.alternative_number LIKE %(contact_number)s"
-            params["contact_number"] = f"%{filters['contact_number']}%"
-
-        if filters.get("name"):
-            query += " OR l.name LIKE %(name)s"
-            params["name"] = f"%{filters['name']}%"
-
         leads = frappe.db.sql(query, params, as_dict=True)
 
     for lead in leads:
+        lead_name = lead.get("name", "")
         row = {
-            "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("name")}</a></strong>',
+            "name": f'<strong><a href="/app/lead/{quote(lead_name, safe="")}" style="color: inherit;">{lead_name}</a></strong>',
             "contact_number": lead.get("contact_number"),
             "alternative_number": lead.get("alternative_number"),
             "executive": lead.get("executive"),
+            "source": lead.get("source"),
+            "subsource": lead.get("subsource"),  # Will be formatted in JS to show only when source is Meta
             "status": lead.get("status"),
+            "created_on": lead.get("created_on"),
+            "show_conversations": lead_name,  # Store lead name for button click handler
+            "first_name": lead.get("first_name", ""),  # Store first_name for modal display
         }
         rows.append(row)
 
