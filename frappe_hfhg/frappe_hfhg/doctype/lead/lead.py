@@ -73,6 +73,9 @@ class Lead(Document):
 			reminder.alternative_number = self.alternative_number
 			reminder.city = self.city
 
+		# Validate that only the creator can close their reminder
+		self.validate_reminder_close_permission()
+
 		if self.contact_number: 
 			validate_phone_number(self.contact_number)
 
@@ -205,6 +208,53 @@ class Lead(Document):
                       f"cannot exceed {max_chars} characters. You currently have {len(description)} characters.")
                 )
 
+	def validate_reminder_close_permission(self):
+		"""Validate that only the creator of a reminder can close it"""
+		# Get current user's full name
+		current_user = frappe.session.user
+		current_user_fullname = frappe.db.get_value("User", current_user, "full_name")
+		
+		# Get old document to compare status changes
+		old_doc = None
+		if hasattr(self, "get_doc_before_save"):
+			try:
+				old_doc = self.get_doc_before_save()
+			except Exception:
+				old_doc = None
+		
+		# If no old document, this is a new document, so no validation needed
+		if not old_doc:
+			return
+		
+		# Create a map of old reminders by name or idx for comparison
+		old_reminders_map = {}
+		if old_doc and hasattr(old_doc, "reminders"):
+			for old_reminder in old_doc.reminders:
+				# Use name if exists, otherwise use idx
+				key = old_reminder.name if old_reminder.name else old_reminder.idx
+				old_reminders_map[key] = old_reminder
+		
+		# Check each reminder in the current document
+		for reminder in self.get("reminders", []):
+			# Find the corresponding old reminder
+			old_reminder = None
+			if reminder.name:
+				old_reminder = old_reminders_map.get(reminder.name)
+			else:
+				# For new reminders, check by idx
+				old_reminder = old_reminders_map.get(reminder.idx)
+			
+			# If reminder status changed from "Open" to "Close"
+			if old_reminder and old_reminder.status == "Open" and reminder.status == "Close":
+				# Check if current user is the executive who created this reminder
+				reminder_executive = reminder.executive or old_reminder.executive
+				if reminder_executive and reminder_executive != current_user_fullname:
+					frappe.throw(
+						_("You cannot close a reminder created by '{0}'. Only the creator can close their own reminder.").format(
+							reminder_executive
+						),
+						title=_("Permission Denied")
+					)
 	
 	def before_insert(self):
 		auto_link_ad_name_from_source(self)

@@ -618,6 +618,24 @@ frappe.call({
                       input.add(openOption);
                       input.add(closeOption);
                       input.value = originalValue || "Open";
+                      
+                      // If this is a reminder status field, check if user can close it
+                      if (this.closest("table").id === "remindersTable") {
+                        const rowIndex = parseInt(this.parentElement.dataset.index);
+                        const reminder = frm.doc.reminders[rowIndex];
+                        const currentUserInfo = frappe.user_info(frappe.session.user);
+                        const currentUserName = currentUserInfo.fullname;
+                        const reminderExecutive = reminder.executive;
+                        
+                        // If current user is not the executive, disable the Close option
+                        if (reminderExecutive && reminderExecutive !== currentUserName) {
+                          closeOption.disabled = true;
+                          // If current value is Close but user can't close, reset to Open
+                          if (input.value === "Close") {
+                            input.value = "Open";
+                          }
+                        }
+                      }
                     } else {
                       input = document.createElement("textarea");
                       input.value = originalValue;
@@ -632,10 +650,36 @@ frappe.call({
 
                     // Save changes on blur
                     input.addEventListener("blur", () => {
-                      const rowIndex = this.parentElement.dataset.index;
+                      const rowIndex = parseInt(this.parentElement.dataset.index);
                       const items = this.closest("#conversationsTable")
                         ? frm.doc.conversations
                         : frm.doc.reminders;
+                      const isRemindersTable = this.closest("table").id === "remindersTable";
+
+                      // Validate reminder close permission
+                      if (field === "status" && isRemindersTable) {
+                        const reminder = items[rowIndex];
+                        const currentUserInfo = frappe.user_info(frappe.session.user);
+                        const currentUserName = currentUserInfo.fullname;
+                        const reminderExecutive = reminder.executive;
+                        const newStatus = input.value;
+                        const oldStatus = originalValue || "Open";
+                        
+                        // If trying to change from Open to Close, check permission
+                        if (oldStatus === "Open" && newStatus === "Close") {
+                          if (reminderExecutive && reminderExecutive !== currentUserName) {
+                            frappe.msgprint({
+                              message: `You cannot close a reminder created by '${reminderExecutive}'. Only the creator can close their own reminder.`,
+                              indicator: "orange",
+                              title: "Permission Denied"
+                            });
+                            // Revert to original value
+                            input.value = oldStatus;
+                            this.innerText = oldStatus;
+                            return;
+                          }
+                        }
+                      }
 
                       if (field === "date") {
                         const dateValue = input.value || originalValue;
@@ -1216,6 +1260,31 @@ frappe.ui.form.on("Reminders", {
     frm.doc.reminders.pop();
     frm.doc.reminders.unshift(child);
     frm.refresh_field("reminders");
+  },
+  
+  reminders_refresh(frm) {
+    // Make status field read-only for reminders that don't belong to current user
+    const currentUserInfo = frappe.user_info(frappe.session.user);
+    const currentUserName = currentUserInfo.fullname;
+    
+    frm.fields_dict.reminders.grid.refresh();
+    
+    // Wait for grid to render, then make status read-only for non-owner reminders
+    setTimeout(() => {
+      if (frm.fields_dict.reminders && frm.fields_dict.reminders.grid) {
+        frm.fields_dict.reminders.grid.grid_rows.forEach((row) => {
+          const reminder = row.doc;
+          if (reminder && reminder.executive && reminder.executive !== currentUserName) {
+            // Make status field read-only for this row
+            const statusField = row.grid_form.fields_dict.status;
+            if (statusField) {
+              statusField.df.read_only = 1;
+              statusField.refresh();
+            }
+          }
+        });
+      }
+    }, 100);
   },
 });
 
