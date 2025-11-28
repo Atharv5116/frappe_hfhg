@@ -110,6 +110,12 @@ frappe.query_reports["Lead Search Report"] = {
       fieldtype: "Link",
       options: "Executive",
     },
+    {
+      fieldname: "active_inactive_status",
+      label: __("Active / Inactive Status"),
+      fieldtype: "Select",
+      options: ["", "Active", "Inactive"],
+    },
   ],
 };
 

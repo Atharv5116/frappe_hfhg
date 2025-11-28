@@ -162,6 +162,12 @@ def get_columns() -> list[dict]:
             "width": 150,
         },
         {
+            "label": _("Active / Inactive Status"),
+            "fieldtype": "Select",
+            "fieldname": "active_inactive_status",
+            "width": 150,
+        },
+        {
             "label": _("Reference name"),
             "fieldtype": "Data",
             "fieldname": "source_reference",
@@ -183,7 +189,7 @@ def get_data(filters: Filters) -> list[dict]:
         SELECT 
             l.name, l.source, l.campaign_name, l.contact_number, l.city, l.center, l.first_name,
             l.distance, l.executive, l.assign_by, l.mode, l.service, l.status, 
-            l.created_on, l.full_name,l.source_reference, ad.ads_name as ad_name,
+            l.created_on, l.full_name,l.source_reference, l.active_inactive_status, ad.ads_name as ad_name,
             latest_surgery.surgery_date, 
             latest_costing.booking_date AS costing_date,
             latest_costing.book_date,
@@ -244,6 +250,10 @@ def get_data(filters: Filters) -> list[dict]:
     if filters.get("status"):
         query += " AND l.status = %(status)s"
         params["status"] = filters["status"]
+
+    if filters.get("active_inactive_status"):
+        query += " AND l.active_inactive_status = %(active_inactive_status)s"
+        params["active_inactive_status"] = filters["active_inactive_status"]
 
     if filters.get("surgery_status"):
         query += " AND latest_surgery.surgery_status = %(surgery_status)s"
@@ -322,6 +332,7 @@ def get_data(filters: Filters) -> list[dict]:
             "mode": lead.get("mode"),
             "service": lead.get("service"),
             "status": lead.get("status"),
+            "active_inactive_status": lead.get("active_inactive_status"),
             "costing_date": lead.get("costing_date"),
             "book_date": lead.get("book_date"),
             "surgery_date": lead.get("surgery_date"),

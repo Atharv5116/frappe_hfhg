@@ -52613,7 +52613,8 @@
     const [month, setMonth] = (0, import_react68.useState)();
     const [type, setType] = (0, import_react68.useState)("ALL");
     const [calendarData, setCalendarData] = (0, import_react68.useState)({});
-    const years = Array.from({ length: 2025 - 2020 + 1 }, (v, i) => 2020 + i);
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: currentYear + 2 - 2020 + 1 }, (v, i) => 2020 + i);
     const months = [
       "Jan",
       "Feb",
@@ -52771,7 +52772,8 @@
         if (response.message.length > 0) {
           setCenter(response.message[0]);
         }
-        getCalendarData(year2, month2 + 1, response.message[0], type);
+        const validMonth = month2 >= 0 && month2 < 12 ? month2 + 1 : new Date().getMonth() + 1;
+        getCalendarData(year2, validMonth, response.message[0], type);
       }).catch((e) => {
         console.error(e);
         toast({
@@ -52783,7 +52785,9 @@
     };
     const onButtonClicked = () => {
       console.log(year, " : ", month, ":", center, ":", type);
-      getCalendarData(year, getMonthNumber(month) + 1, center, type);
+      const monthNumber = getMonthNumber(month);
+      const validMonth = monthNumber >= 0 && monthNumber < 12 ? monthNumber + 1 : new Date().getMonth() + 1;
+      getCalendarData(year, validMonth, center, type);
     };
     (0, import_react68.useEffect)(() => {
       const year2 = new Date().getFullYear();
@@ -52979,4 +52983,4 @@ object-assign
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//# sourceMappingURL=appointment_ui.bundle.QA44WLRW.js.map
+//# sourceMappingURL=appointment_ui.bundle.HYGZHIOC.js.map

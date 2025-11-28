@@ -100,6 +100,12 @@ def get_columns() -> list[dict]:
 			"fieldname": "status",
 			"width": 150,
 		},
+		{
+			"label": _("Active / Inactive Status"),
+			"fieldtype": "Select",
+			"fieldname": "active_inactive_status",
+			"width": 150,
+		},
 	]
 
 def get_data(filters: Filters) -> list[dict]:
@@ -125,6 +131,9 @@ def get_data(filters: Filters) -> list[dict]:
 
 	if filters.status:
 		lead_filters["status"] = filters.status
+
+	if filters.get("active_inactive_status"):
+		lead_filters["active_inactive_status"] = filters["active_inactive_status"]
 
 	if filters.contact_number:
 		lead_filters["contact_number"] = ["like", f"%{filters.contact_number}%"]
@@ -167,6 +176,7 @@ def get_data(filters: Filters) -> list[dict]:
 			"mode": lead.get("mode"),
 			"service": lead.get("service"),
 			"status": lead.get("status"),
+			"active_inactive_status": lead.get("active_inactive_status"),
 		}
 		rows.append(row)
 

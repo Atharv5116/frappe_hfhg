@@ -32,6 +32,12 @@ frappe.query_reports["Duplicate Lead Report"] = {
 			reqd: 1,
 			default: new Date(),
 		  },
+		  {
+			fieldname: "active_inactive_status",
+			label: __("Active / Inactive Status"),
+			fieldtype: "Select",
+			options: ["", "Active", "Inactive"],
+		  },
 
 	]
 };

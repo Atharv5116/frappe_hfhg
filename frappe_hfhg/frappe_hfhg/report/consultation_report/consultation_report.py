@@ -190,6 +190,12 @@ def get_columns() -> list[dict]:
 			"width": 150,
 		},
 		{
+			"label": _("Active / Inactive Status"),
+			"fieldtype": "Select",
+			"fieldname": "active_inactive_status",
+			"width": 150,
+		},
+		{
             "label": _("Reference name"),
             "fieldtype": "Data",
             "fieldname": "source_reference",
@@ -237,6 +243,7 @@ def get_data(filters: Filters) -> list[dict]:
 			l.created_on,
 			l.ht_eligible_reason,
 			l.source_reference,
+			l.active_inactive_status,
 			latest_surgery.surgery_date, 
 			latest_surgery.surgery_status,
 			latest_costing.booking_date AS costing_date,
@@ -276,6 +283,10 @@ def get_data(filters: Filters) -> list[dict]:
 	if filters.get("lead_status"):
 		query += "AND l.status = %(lead_status)s"
 		params["lead_status"] = filters["lead_status"]
+
+	if filters.get("active_inactive_status"):
+		query += " AND l.active_inactive_status = %(active_inactive_status)s"
+		params["active_inactive_status"] = filters["active_inactive_status"]
 
 	if filters.get("center"):
 		query += " AND c.center = %(center)s"
@@ -373,6 +384,7 @@ def get_data(filters: Filters) -> list[dict]:
 			"ht_eligible": consultation.get("ht_eligible"),
 			"ht_eligible_reason": consultation.get("ht_eligible_reason"),
 			"lead_status": consultation.get("lead_status"),
+			"active_inactive_status": consultation.get("active_inactive_status"),
 			"costing_date": consultation.get("costing_date"),
 			"book_date": consultation.get("book_date"),
 			"surgery_date": consultation.get("surgery_date"),

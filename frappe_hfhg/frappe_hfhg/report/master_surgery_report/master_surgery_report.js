@@ -235,6 +235,12 @@ formatter: function(value, row, column, data, default_formatter) {
 		],
 	  },
 	  {
+		fieldname: "active_inactive_status",
+		label: __("Active / Inactive Status"),
+		fieldtype: "Select",
+		options: ["", "Active", "Inactive"],
+	  },
+	  {
 		fieldname: "source",
 		label: __("Source"),
 		fieldtype: "Select",

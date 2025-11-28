@@ -182,6 +182,12 @@ frappe.query_reports["HT Prospect Report"] = {
       ],
     },
     {
+      fieldname: "active_inactive_status",
+      label: __("Active / Inactive Status"),
+      fieldtype: "Select",
+      options: ["", "Active", "Inactive"],
+    },
+    {
       fieldname: "cs_status",
       label: __("CS Status"),
       fieldtype: "Select",

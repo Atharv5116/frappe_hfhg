@@ -112,6 +112,12 @@ frappe.query_reports["Consultation Report"] = {
       ],
     },
     {
+      fieldname: "active_inactive_status",
+      label: __("Active / Inactive Status"),
+      fieldtype: "Select",
+      options: ["", "Active", "Inactive"],
+    },
+    {
       fieldname: "center",
       label: __("Center"),
       fieldtype: "Link",
