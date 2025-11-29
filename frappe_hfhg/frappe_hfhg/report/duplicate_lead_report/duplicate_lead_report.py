@@ -41,6 +41,12 @@ def get_columns() -> list[dict]:
             "width": 150,
         },
 		{
+            "label": _("Sub Source"),
+            "fieldtype": "Data",
+            "fieldname": "subsource",
+            "width": 150,
+        },
+		{
             "label": _("Mode"),
             "fieldtype": "Data",
             "fieldname": "mode",     
@@ -187,6 +193,7 @@ def get_data(filters: Filters) -> list[dict]:
             dl.created_on AS dl_created_on,
             dl.contact_number,
             dl.source,
+            dl.subsource,
             dl.mode,
             dl.campaign_name,
             dl.ad_name,
@@ -217,13 +224,13 @@ def get_data(filters: Filters) -> list[dict]:
 	if isinstance(filters, str): 
 		filters = frappe.parse_json(filters)
 	params = {
-        "from_date": filters.get("from_date"),
-        "to_date": filters.get("to_date"),
-    }
-    
-    if filters.get("active_inactive_status"):
-        query += " AND dl.active_inactive_status = %(active_inactive_status)s"
-        params["active_inactive_status"] = filters["active_inactive_status"]
+		"from_date": filters.get("from_date"),
+		"to_date": filters.get("to_date"),
+	}
+	
+	if filters.get("active_inactive_status"):
+		query += " AND dl.active_inactive_status = %(active_inactive_status)s"
+		params["active_inactive_status"] = filters["active_inactive_status"]
 	
 	leads = frappe.db.sql(query, params, as_dict=True)
 
@@ -272,6 +279,7 @@ def get_data(filters: Filters) -> list[dict]:
 			"dl_name": f'<strong><a href="/app/lead/{quote(lead.get("dl_name"), safe="")}" style="color: inherit;">{lead.get("dl_first_name")}</a></strong>',
 			"dl_created_on": lead.get("dl_created_on"),
 			"source": lead.get("source"),
+			"subsource": lead.get("subsource") if lead.get("source") == "Meta" else "",
 			"mode": lead.get("mode"),
 			"campaign_name": lead.get("campaign_name"),
 			"ad_name": lead.get("ad_name"),
