@@ -213,6 +213,12 @@ def get_columns() -> list[dict]:
 			"fieldname": "lead_status",
 			"width": 150,
 		},
+		{
+			"label": _("Active / Inactive Status"),
+			"fieldtype": "Select",
+			"fieldname": "active_inactive_status",
+			"width": 150,
+		},
 	]
 
 def get_data(filters) -> list[dict]:
@@ -221,7 +227,7 @@ def get_data(filters) -> list[dict]:
 	rows = []
 	query = """
         SELECT
-		    c.*, l.mode, l.status as lead_status, l.campaign_name, l.ad_name, l.imported_source, l.full_name,
+		    c.*, l.mode, l.status as lead_status, l.campaign_name, l.ad_name, l.imported_source, l.full_name, l.active_inactive_status,
 			latest_consultation.date AS consultation_date,
 		    latest_consultation.status AS consultation_status, 
 		    latest_surgery.surgery_date,
@@ -272,6 +278,10 @@ def get_data(filters) -> list[dict]:
 	if filters.lead_mode:
 		query += " AND l.mode = %(lead_mode)s"
 		params["lead_mode"] = filters["lead_mode"]
+
+	if filters.get("active_inactive_status"):
+		query += " AND l.active_inactive_status = %(active_inactive_status)s"
+		params["active_inactive_status"] = filters["active_inactive_status"]
 
 	if filters.get("surgery_status"):
 		query += " AND latest_surgery.surgery_status = %(surgery_status)s"
@@ -363,6 +373,7 @@ def get_data(filters) -> list[dict]:
 			"campaign_name": surgery.get("campaign_name"),
 			"ad_name": surgery.get("ad_name"),
 			"lead_status": surgery.get("lead_status"),
+			"active_inactive_status": surgery.get("active_inactive_status"),
 			"surgery_date": surgery.get("surgery_date"),
 			"surgery_status": surgery.get("surgery_status"),
 			"consultation_date": surgery.get("consultation_date"),

@@ -171,6 +171,12 @@ frappe.query_reports["Master Booking Report"] = {
 		],
 	  },
 	  {
+		fieldname: "active_inactive_status",
+		label: __("Active / Inactive Status"),
+		fieldtype: "Select",
+		options: ["", "Active", "Inactive"],
+	  },
+	  {
 		fieldname: "executive",
 		label: __("Executive"),
 		fieldtype: "Link",

@@ -58,6 +58,12 @@ def get_columns() -> list[dict]:
             "width": 160,
         },
         {
+            "label": _("Active / Inactive Status"),
+            "fieldtype": "Select",
+            "fieldname": "active_inactive_status",
+            "width": 150,
+        },
+        {
             "label": _("Created Date"),
             "fieldtype": "Date",
             "fieldname": "created_on",
@@ -98,13 +104,17 @@ def get_data(filters: Filters) -> list[dict]:
         conditions.append("l.executive = %(executive)s")
         params["executive"] = filters["executive"]
     
+    if filters.get("active_inactive_status"):
+        conditions.append("l.active_inactive_status = %(active_inactive_status)s")
+        params["active_inactive_status"] = filters["active_inactive_status"]
+    
     # Only run query if there are conditions
     if conditions:
         where_clause = " AND ".join(conditions)
         query = """
             SELECT 
                 l.name, l.status, l.contact_number, l.alternative_number, l.executive, 
-                l.created_on, l.first_name, l.source, l.subsource
+                l.created_on, l.first_name, l.source, l.subsource, l.active_inactive_status
             FROM 
                 `tabLead` l
             WHERE 
@@ -123,6 +133,7 @@ def get_data(filters: Filters) -> list[dict]:
             "source": lead.get("source"),
             "subsource": lead.get("subsource"),  # Will be formatted in JS to show only when source is Meta
             "status": lead.get("status"),
+            "active_inactive_status": lead.get("active_inactive_status"),
             "created_on": lead.get("created_on"),
             "show_conversations": lead_name,  # Store lead name for button click handler
             "first_name": lead.get("first_name", ""),  # Store first_name for modal display

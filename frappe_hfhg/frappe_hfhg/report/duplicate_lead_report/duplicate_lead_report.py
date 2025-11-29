@@ -154,6 +154,12 @@ def get_columns() -> list[dict]:
             "fieldname": "ol_center",     
             "width": 150,
         },
+		{
+            "label": _("Active / Inactive Status"),
+            "fieldtype": "Select",
+            "fieldname": "active_inactive_status",     
+            "width": 150,
+        },
 
 	]
 
@@ -187,6 +193,7 @@ def get_data(filters: Filters) -> list[dict]:
             dl.attended,
             dl.executive,
             dl.center,
+            dl.active_inactive_status,
             COUNT(dl.contact_number) OVER (PARTITION BY dl.contact_number) AS count,
             ol.name AS ol_name,
 			ol.full_name AS ol_first_name,
@@ -213,6 +220,10 @@ def get_data(filters: Filters) -> list[dict]:
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
     }
+    
+    if filters.get("active_inactive_status"):
+        query += " AND dl.active_inactive_status = %(active_inactive_status)s"
+        params["active_inactive_status"] = filters["active_inactive_status"]
 	
 	leads = frappe.db.sql(query, params, as_dict=True)
 
@@ -280,7 +291,8 @@ def get_data(filters: Filters) -> list[dict]:
 			"ol_campaign_name": lead.get("ol_campaign_name"),
 			"ol_ad_name": lead.get("ol_ad_name"),
 			"ol_executive": lead.get("ol_executive"),
-			"ol_center": lead.get("ol_center"),	
+			"ol_center": lead.get("ol_center"),
+			"active_inactive_status": lead.get("active_inactive_status"),	
 		}
 		rows.append(row)
     

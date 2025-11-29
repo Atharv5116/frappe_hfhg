@@ -1110,6 +1110,18 @@ frappe.call({
       frm.set_df_property("assign_by", "read_only", 0);
     }
 
+    // Set active_inactive_status field editable only for Admin, Lead Manager, and Executive roles
+    if (
+      frappe.user_roles.includes("Administrator") ||
+      frappe.user_roles.includes("System Manager") ||
+      frappe.user_roles.includes("Lead Manager") ||
+      frappe.user_roles.includes("Executive")
+    ) {
+      frm.set_df_property("active_inactive_status", "read_only", 0);
+    } else {
+      frm.set_df_property("active_inactive_status", "read_only", 1);
+    }
+
     if (frm.doc.hair_problem_hair_loss_check && frm.doc.remark_hair_loss) {
       frm.set_df_property("remark_hair_loss", "hidden", 0);
     }

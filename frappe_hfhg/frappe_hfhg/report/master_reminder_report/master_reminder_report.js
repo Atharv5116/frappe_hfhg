@@ -85,6 +85,12 @@ frappe.query_reports["Master Reminder Report"] = {
         "\nNew Lead\nDuplicate Lead\nFake Lead\nInvalid Number\nNot Connected\nNot Interested\nCallback\nConnected\nCS Followup\nCS Lined Up\nHT CS Done\nBudget Issue\nCosting Done\nHairfall PT\nMedi/PRP\nBooked\nDate Given\nHT Postpone\nBHT Followup\nHT Done\nHT Not Possible\nAlopecia Case\nLoan/EMI\nBeard HT\n2nd session\nHT Prospect\nMedi/PRP FUP\nHT Done FUP\nBooked FUP\nAppointment Fix FUP\nClinic Visit FUP",
     },
     {
+      fieldname: "active_inactive_status",
+      label: __("Active / Inactive Status"),
+      fieldtype: "Select",
+      options: ["", "Active", "Inactive"],
+    },
+    {
       fieldname: "center",
       label: __("Center"),
       fieldtype: "Link",
