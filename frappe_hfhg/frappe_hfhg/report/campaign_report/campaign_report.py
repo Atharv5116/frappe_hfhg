@@ -105,6 +105,12 @@ def get_columns() -> list[dict]:
             "fieldname": "source",
             "width": 150,
         },
+        {
+            "label": _("Sub Source"),
+            "fieldtype": "Data",
+            "fieldname": "subsource",
+            "width": 150,
+        },
     ]
 
 def get_data(filters: Filters) -> list[dict]:
@@ -120,7 +126,7 @@ def get_data(filters: Filters) -> list[dict]:
     query = """
         SELECT 
             l.name, l.campaign_name, l.contact_number, l.status, l.first_name,
-            l.created_on, l.executive, l.center, ad.ads_name as ad_name,l.source,
+            l.created_on, l.executive, l.center, ad.ads_name as ad_name,l.source, l.subsource,
             latest_surgery.surgery_date, 
             latest_costing.booking_date AS costing_date, 
             latest_consultation.date AS consultation_date,
@@ -170,6 +176,10 @@ def get_data(filters: Filters) -> list[dict]:
     if filters.get("source"):
         query += " AND l.source LIKE %(source)s"
         params["source"] = f"%{filters['source']}%"
+
+    if filters.get("subsource"):
+        query += " AND l.subsource = %(subsource)s"
+        params["subsource"] = filters["subsource"]
 
     if filters.get("ad_name"):
         query += " AND ad.ads_name LIKE %(ad_name)s"
@@ -260,7 +270,8 @@ def get_data(filters: Filters) -> list[dict]:
             "consultation_date": lead.get("consultation_date"),
             "surgery_status": lead.get("surgery_status"),
             "cs_status": lead.get("cs_status"),
-            "source": lead.get("source")
+            "source": lead.get("source"),
+            "subsource": lead.get("subsource") if lead.get("source") == "Meta" else ""
         }
         rows.append(row)
 

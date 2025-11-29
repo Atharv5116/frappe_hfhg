@@ -132,6 +132,12 @@ def get_columns() -> list[dict]:
 			"width": 150,
 		},
 		{
+			"label": _("Sub Source"),
+			"fieldtype": "Data",
+			"fieldname": "subsource",
+			"width": 150,
+		},
+		{
             "label": _("Imported Source"),
             "fieldtype": "Data",
             "fieldname": "imported_source",
@@ -212,7 +218,7 @@ def get_data(filters) -> list[dict]:
 	query = """
         SELECT
 		   c.*, l.mode, l.status as lead_status, l.campaign_name,
-			l.ad_name, l.imported_source, l.full_name, l.active_inactive_status,
+			l.ad_name, l.imported_source, l.full_name, l.active_inactive_status, l.subsource,
 		   latest_consultation.date AS consultation_date,
 		   latest_consultation.status AS consultation_status, 
 		   latest_surgery.surgery_date,
@@ -254,6 +260,10 @@ def get_data(filters) -> list[dict]:
 	if filters.source:
 		query += " AND c.lead_source = %(source)s"
 		params["source"] = filters["source"]
+
+	if filters.subsource:
+		query += " AND l.subsource = %(subsource)s"
+		params["subsource"] = filters["subsource"]
 
 	if filters.lead_status:
 		query += " AND l.status = %(lead_status)s"
@@ -317,7 +327,8 @@ def get_data(filters) -> list[dict]:
 			"month": surgery.get("booking_date").strftime("%B") if surgery.get("booking_date") else "",
 			"year": surgery.get("booking_date").strftime("%Y") if surgery.get("booking_date") else "",
 			"source": surgery.get("lead_source"),
-		"imported_source": surgery.get("imported_source"),
+			"subsource": surgery.get("subsource") if surgery.get("lead_source") == "Meta" else "",
+			"imported_source": surgery.get("imported_source"),
 		"center": surgery.get("center"),
 		"patient_name": f'<strong><a href="/app/costing/{quote(surgery.get("patient"), safe="")}" style="color: inherit;">{surgery.get("full_name")}</a></strong>',
 		"phone_no": surgery.get("contact_number"),

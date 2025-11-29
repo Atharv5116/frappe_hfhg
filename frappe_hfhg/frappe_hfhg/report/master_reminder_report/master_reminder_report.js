@@ -110,6 +110,12 @@ frappe.query_reports["Master Reminder Report"] = {
         "\nWebsite\nWebsite Form\nGoogle Adword\nGoogle GMB\nFacebook\nInstagram\nHoarding\nReferences\nYoutube\nYoutuber\nQuora\nPinterest\nTwitter\nWalk In\nCall\nEmail\nJust dial\nImported Data",
     },
     {
+      fieldname: "subsource",
+      label: __("Sub Source"),
+      fieldtype: "Select",
+      options: ["", "Facebook", "Instagram"],
+    },
+    {
       fieldname: "cs_date",
       label: __("Consultation Date"),
       fieldtype: "Date",

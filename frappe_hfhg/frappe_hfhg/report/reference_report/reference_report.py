@@ -35,6 +35,12 @@ def get_columns() -> list[dict]:
 			"width": 150,
 		},
 		{
+			"label": _("Sub Source"),
+			"fieldtype": "Data",
+			"fieldname": "subsource",
+			"width": 150,
+		},
+		{
 			"label": _("Reference Name"),
 			"fieldtype": "Data",
 			"fieldname": "reference_name",
@@ -126,6 +132,9 @@ def get_data(filters: Filters) -> list[dict]:
 	if filters.source:
 		lead_filters["source"] = ["like", f"%{filters.source}%"]
 
+	if filters.subsource:
+		lead_filters["subsource"] = ["like", f"%{filters.subsource}%"]
+
 	if filters.mode:
 		lead_filters["mode"] = filters.mode
 
@@ -165,6 +174,7 @@ def get_data(filters: Filters) -> list[dict]:
 		row = {
 			"created_on": lead.get("created_on"),
 			"source": lead.get("source"),
+			"subsource": lead.get("subsource") if lead.get("source") == "Meta" else "",
 		"reference_name": lead.get("source_reference"),
 		"campaign_name": lead.get("campaign_name"),
             "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("full_name")}</a></strong>',

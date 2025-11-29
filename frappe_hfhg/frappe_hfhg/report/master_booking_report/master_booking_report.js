@@ -132,6 +132,12 @@ frappe.query_reports["Master Booking Report"] = {
 		],
 	  },
 	  {
+		fieldname: "subsource",
+		label: __("Sub Source"),
+		fieldtype: "Select",
+		options: ["", "Facebook", "Instagram"],
+	  },
+	  {
 		fieldname: "lead_status",
 		label: __("Lead Status"),
 		fieldtype: "Select",

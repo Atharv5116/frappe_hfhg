@@ -133,6 +133,12 @@ frappe.query_reports["Campaign Report"] = {
       ],
     },
     {
+      fieldname: "subsource",
+      label: __("Sub Source"),
+      fieldtype: "Select",
+      options: ["", "Facebook", "Instagram"],
+    },
+    {
       fieldname: "executive",
       label: __("Executive"),
       fieldtype: "Link",
