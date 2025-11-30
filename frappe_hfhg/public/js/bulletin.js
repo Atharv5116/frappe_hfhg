@@ -179,8 +179,58 @@
     console.log('[Bulletin] Button text:', expandButton.textContent);
     console.log('[Bulletin] Button style:', expandButton.style.cssText);
     
-    // Store expanded state
+    // Store expanded state and click handler reference
     let isExpanded = false;
+    let clickOutsideHandler = null;
+    
+    // Function to remove click-outside listener
+    function removeClickOutsideListener() {
+      if (clickOutsideHandler) {
+        document.removeEventListener('click', clickOutsideHandler, true);
+        clickOutsideHandler = null;
+        console.log('[Bulletin] Click-outside listener removed');
+      }
+    }
+    
+    // Function to collapse the bulletin (without toggling)
+    function collapseBulletin() {
+      if (!isExpanded) {
+        return; // Already collapsed
+      }
+      
+      isExpanded = false;
+      console.log('[Bulletin] Collapsing bulletin...');
+      
+      // Collapse - hide popover and show truncated text
+      messageSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;display:inline-block;vertical-align:middle;line-height:1.4;';
+      expandButton.textContent = 'Expand';
+      expandButton.title = 'Click to expand message';
+      
+      // Remove click-outside listener when collapsing
+      removeClickOutsideListener();
+      
+      // Hide popover
+      const popover = document.getElementById('bulletin-popover');
+      if (popover) {
+        popover.style.display = 'none';
+      }
+      
+      bulletin.style.height = '28px';
+      bulletin.style.padding = '0 12px';
+      bulletin.style.maxWidth = '400px';
+      bulletin.style.flexWrap = 'nowrap';
+      bulletin.style.alignItems = 'center';
+      
+      messageContainer.style.flexDirection = 'row';
+      messageContainer.style.alignItems = 'center';
+      messageContainer.style.width = 'auto';
+      
+      expandButton.style.marginLeft = '8px';
+      expandButton.style.height = '22px';
+      expandButton.style.padding = '0 10px';
+      
+      console.log('[Bulletin] ✓ Collapsed');
+    }
     
     // Click handler to expand/collapse
     function toggleExpand(e) {
@@ -206,6 +256,11 @@
           popover.textContent = text;
           bulletin.style.position = 'relative';
           bulletin.appendChild(popover);
+          
+          // Prevent clicks inside popover from closing it
+          popover.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
         } else {
           popover.style.display = 'block';
         }
@@ -226,34 +281,53 @@
         expandButton.style.height = '22px';
         expandButton.style.padding = '0 10px';
         
+        // Remove any existing click-outside listener first
+        removeClickOutsideListener();
+        
+        // Add click-outside listener to collapse when clicking outside
+        // Use a longer delay to ensure popover is fully rendered
+        setTimeout(function() {
+          clickOutsideHandler = function(e) {
+            const bulletinEl = document.getElementById('custom-bulletin-announcement');
+            const popoverEl = document.getElementById('bulletin-popover');
+            
+            // Check if elements exist and popover is visible
+            if (!bulletinEl || !popoverEl) {
+              return;
+            }
+            
+            // Check visibility using multiple methods
+            const popoverVisible = popoverEl.offsetParent !== null && 
+                                   popoverEl.style.display !== 'none' &&
+                                   window.getComputedStyle(popoverEl).display !== 'none';
+            
+            if (!popoverVisible) {
+              return;
+            }
+            
+            // Check if click is outside both bulletin and popover
+            const clickedInsideBulletin = bulletinEl.contains(e.target);
+            const clickedInsidePopover = popoverEl.contains(e.target);
+            
+            if (!clickedInsideBulletin && !clickedInsidePopover) {
+              console.log('[Bulletin] Click outside detected, collapsing...');
+              // Collapse the bulletin directly (don't toggle)
+              collapseBulletin();
+            }
+          };
+          
+          // Add listener after a delay to avoid immediate collapse
+          // Use capture phase to catch events earlier
+          setTimeout(function() {
+            document.addEventListener('click', clickOutsideHandler, true);
+            console.log('[Bulletin] Click-outside listener attached');
+          }, 200);
+        }, 200);
+        
         console.log('[Bulletin] ✓ Expanded - Popover shown');
       } else {
-        // Collapse - hide popover and show truncated text
-        messageSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;display:inline-block;vertical-align:middle;line-height:1.4;';
-        expandButton.textContent = 'Expand';
-        expandButton.title = 'Click to expand message';
-        
-        // Hide popover
-        const popover = document.getElementById('bulletin-popover');
-        if (popover) {
-          popover.style.display = 'none';
-        }
-        
-        bulletin.style.height = '28px';
-        bulletin.style.padding = '0 12px';
-        bulletin.style.maxWidth = '400px';
-        bulletin.style.flexWrap = 'nowrap';
-        bulletin.style.alignItems = 'center';
-        
-        messageContainer.style.flexDirection = 'row';
-        messageContainer.style.alignItems = 'center';
-        messageContainer.style.width = 'auto';
-        
-        expandButton.style.marginLeft = '8px';
-        expandButton.style.height = '22px';
-        expandButton.style.padding = '0 10px';
-        
-        console.log('[Bulletin] ✓ Collapsed');
+        // Collapse using the dedicated function
+        collapseBulletin();
       }
     }
     
