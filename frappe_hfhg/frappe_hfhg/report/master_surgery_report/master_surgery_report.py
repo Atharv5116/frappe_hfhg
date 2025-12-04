@@ -108,6 +108,12 @@ def get_columns() -> list[dict]:
 			"width": 150,
 		},
 		{
+			"label": _("Sub Source"),
+			"fieldtype": "Data",
+			"fieldname": "subsource",
+			"width": 150,
+		},
+		{
             "label": _("Imported Source"),
             "fieldtype": "Data",
             "fieldname": "imported_source",
@@ -308,7 +314,7 @@ def get_data(filters) -> list[dict]:
 			l.status as lead_status,
 		    l.full_name,l.campaign_name,ad.ads_name as ad_name,
 		    l.name as lead_name,l.source_reference,
-			l.mode, l.imported_source, l.active_inactive_status,
+			l.mode, l.imported_source, l.active_inactive_status, l.subsource,
 		    latest_consultation.date AS consultation_date,latest_consultation.status as cs_status,
 			c.booking_date as prospect_date,
 			c.booking_transaction_date,
@@ -372,6 +378,10 @@ def get_data(filters) -> list[dict]:
 	if filters.get("source"):
 		query += " AND s.lead_source = %(source)s"
 		params["source"] = filters["source"]
+
+	if filters.get("subsource"):
+		query += " AND l.subsource = %(subsource)s"
+		params["subsource"] = filters["subsource"]
 
 	if filters.get("status"):
 		query += " AND s.surgery_status = %(status)s"
@@ -559,6 +569,7 @@ def get_data(filters) -> list[dict]:
             "year": surgery.get("surgery_date").strftime("%Y"),
 			"surgery_date": surgery.get("surgery_date"),
 			"source": surgery.get("lead_source"),
+			"subsource": surgery.get("subsource") if surgery.get("lead_source") == "Meta" else "",
 			"imported_source": surgery.get("imported_source"),
 			"status": surgery.get("surgery_status"),
 			"campaign_name": surgery.get("campaign_name"),

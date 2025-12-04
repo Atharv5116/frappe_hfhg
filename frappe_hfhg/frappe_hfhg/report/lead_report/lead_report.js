@@ -166,6 +166,12 @@ frappe.query_reports["Lead Report"] = {
       ],
     },
     {
+      fieldname: "subsource",
+      label: __("Sub Source"),
+      fieldtype: "Select",
+      options: ["", "Facebook", "Instagram"],
+    },
+    {
       fieldname: "mode",
       label: __("Lead mode"),
       fieldtype: "Select",

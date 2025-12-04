@@ -65,6 +65,12 @@ def get_columns(filters: Filters) -> list[dict]:
             "width": 120,
         },
         {
+            "label": _("Sub Source"),
+            "fieldtype": "Data",
+            "fieldname": "subsource",
+            "width": 120,
+        },
+        {
             "label": _("Total Expense (₹)"),
             "fieldtype": "Float",
             "fieldname": "total_expense",
@@ -130,7 +136,8 @@ def get_data(filters: Filters) -> list[dict]:
     # Fetch metadata keyed by canonical Meta Ads docname
     meta_details = get_meta_ads_details(list(all_canonical_ids), all_fallback_names)
     creation_dates = get_meta_lead_form_dates(all_canonical_ids, all_fallback_names)
-    sources = get_lead_sources_for_canonical_ids(all_canonical_ids, all_fallback_names)
+    sources = get_lead_sources_for_canonical_ids(all_canonical_ids, all_fallback_names, filters)
+    subsources = get_lead_subsources_for_canonical_ids(all_canonical_ids, all_fallback_names, filters)
 
     rows: list[dict] = []
     for canonical_id in sorted(all_canonical_ids, key=lambda value: (all_fallback_names.get(value) or value)):
@@ -160,6 +167,7 @@ def get_data(filters: Filters) -> list[dict]:
             "ad_status": status,
             "ad_created_date": ad_created_date,
             "source": sources.get(canonical_id, ""),
+            "subsource": subsources.get(canonical_id, "") if sources.get(canonical_id, "") == "Meta" else "",
             "total_expense": total_expense,
             "lifetime_revenue": lifetime_revenue,
             "period_revenue": period_revenue,
@@ -193,6 +201,10 @@ def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, s
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
     }
+    if filters.get("source"):
+        params["source"] = filters["source"]
+    if filters.get("subsource"):
+        params["subsource"] = filters["subsource"]
     
     rows = frappe.db.sql(
         f"""
@@ -218,6 +230,10 @@ def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, s
           AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
           AND l.ad_name IS NOT NULL
           AND l.ad_name != ''
+        """
+        + (f" AND l.source = %(source)s" if filters.get("source") else "")
+        + (f" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + """
         GROUP BY ad_identifier
         HAVING ad_identifier IS NOT NULL AND ad_identifier != ''
         """,
@@ -317,6 +333,11 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
             "from_date": filters.get("from_date"),
             "to_date": filters.get("to_date"),
         })
+    
+    if filters.get("source"):
+        params["source"] = filters["source"]
+    if filters.get("subsource"):
+        params["subsource"] = filters["subsource"]
 
     revenue_rows = frappe.db.sql(
         f"""
@@ -354,6 +375,10 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
           AND p.payment_type = 'Surgery'
           AND IFNULL(s.pending_amount, 0) = 0
           {date_condition}
+        """
+        + (f" AND l.source = %(source)s" if filters.get("source") else "")
+        + (f" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + """
         GROUP BY canonical_id, display_name
         HAVING canonical_id IS NOT NULL AND canonical_id != ''
         """,
@@ -457,7 +482,7 @@ def get_meta_lead_form_dates(canonical_ids: set[str], fallback_names: dict[str, 
     return creation_map
 
 
-def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: dict[str, str]) -> dict[str, str]:
+def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: dict[str, str], filters: Filters = None) -> dict[str, str]:
     if not canonical_ids and not fallback_names:
         return {}
 
@@ -481,6 +506,12 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
         return {}
 
     where_matcher = " AND (" + " OR ".join(filter_clauses) + ")"
+    
+    if filters:
+        if filters.get("source"):
+            params["source"] = filters["source"]
+        if filters.get("subsource"):
+            params["subsource"] = filters["subsource"]
 
     rows = frappe.db.sql(
         f"""
@@ -490,7 +521,8 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
                 WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
                 ELSE TRIM(l.ad_name)
             END AS canonical_id,
-            l.source
+            l.source,
+            l.subsource
         FROM `tabLead` l
         LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
         LEFT JOIN (
@@ -501,6 +533,10 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
           AND l.ad_name IS NOT NULL
           AND l.ad_name != ''
           {where_matcher}
+        """
+        + (f" AND l.source = %(source)s" if filters and filters.get("source") else "")
+        + (f" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
+        + """
         ORDER BY l.modified DESC
         """,
         params,
@@ -515,6 +551,77 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
         source_map[canonical_id] = row.get("source") or ""
 
     return source_map
+
+
+def get_lead_subsources_for_canonical_ids(canonical_ids: set[str], fallback_names: dict[str, str], filters: Filters = None) -> dict[str, str]:
+    if not canonical_ids and not fallback_names:
+        return {}
+
+    canonical_tuple = make_identifier_tuple(set(canonical_ids)) if canonical_ids else tuple()
+    lookup_values = {normalize_identifier(value) for value in fallback_names.values() if value}
+    lookup_values.update({normalize_identifier(value) for value in canonical_ids})
+    lookup_tuple = make_identifier_tuple(lookup_values) if lookup_values else tuple()
+
+    filter_clauses: list[str] = []
+    params: dict[str, object] = {}
+
+    if canonical_tuple:
+        params["canonical_ids"] = canonical_tuple
+        filter_clauses.append("ma_by_name.name IN %(canonical_ids)s")
+        filter_clauses.append("ma_by_ads_unique.single_meta_id IN %(canonical_ids)s")
+    if lookup_tuple:
+        params["lookup_values"] = lookup_tuple
+        filter_clauses.append("TRIM(l.ad_name) IN %(lookup_values)s")
+
+    if not filter_clauses:
+        return {}
+
+    where_matcher = " AND (" + " OR ".join(filter_clauses) + ")"
+    
+    if filters:
+        if filters.get("source"):
+            params["source"] = filters["source"]
+        if filters.get("subsource"):
+            params["subsource"] = filters["subsource"]
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT 
+            CASE
+                WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
+                WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
+                ELSE TRIM(l.ad_name)
+            END AS canonical_id,
+            l.subsource
+        FROM `tabLead` l
+        LEFT JOIN `tabMeta Ads` ma_by_name ON ma_by_name.name = l.ad_name
+        LEFT JOIN (
+            {META_ADS_BY_TRIMMED_NAME_SQL}
+        ) ma_by_ads_unique ON ma_by_ads_unique.trimmed_ads_name = TRIM(l.ad_name)
+        WHERE l.source = 'Meta'
+          AND l.subsource IS NOT NULL
+          AND l.subsource != ''
+          AND l.ad_name IS NOT NULL
+          AND l.ad_name != ''
+          {where_matcher}
+        """
+        + (f" AND l.source = %(source)s" if filters and filters.get("source") else "")
+        + (f" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
+        + """
+        ORDER BY l.modified DESC
+        """,
+        params,
+        as_dict=True,
+    )
+
+    subsource_map: dict[str, str] = {}
+    for row in rows:
+        canonical_id = normalize_identifier(row.get("canonical_id"))
+        if not canonical_id or canonical_id in subsource_map:
+            continue
+        subsource_map[canonical_id] = row.get("subsource") or ""
+
+    return subsource_map
 
 
 def get_surgery_date_clause() -> str:

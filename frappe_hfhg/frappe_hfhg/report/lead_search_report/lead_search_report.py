@@ -100,6 +100,10 @@ def get_data(filters: Filters) -> list[dict]:
         conditions.append("l.source = %(source)s")
         params["source"] = filters["source"]
     
+    if filters.get("subsource"):
+        conditions.append("l.subsource = %(subsource)s")
+        params["subsource"] = filters["subsource"]
+    
     if filters.get("executive"):
         conditions.append("l.executive = %(executive)s")
         params["executive"] = filters["executive"]

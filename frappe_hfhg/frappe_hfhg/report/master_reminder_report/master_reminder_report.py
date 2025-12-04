@@ -139,6 +139,12 @@ def get_columns() -> list[dict]:
 			"width": 120,
 		},
 		{
+			"label": _("Sub Source"),
+			"fieldtype": "Data",
+			"fieldname": "subsource",
+			"width": 120,
+		},
+		{
 			"label": _("Consultation Date"),
 			"fieldtype": "Date",
 			"fieldname": "cs_date",
@@ -260,6 +266,7 @@ def get_data(filters):
             rm.lead_status, 
             l.mode, 
             l.source,
+            l.subsource,
             l.active_inactive_status,
             latest_consultation.latest_consultation_date AS cs_date, 
             latest_consultation.cs_status, 
@@ -317,6 +324,9 @@ def get_data(filters):
     if filters.source:
         query += " AND l.source = %(source)s"
         params["source"] = filters.source
+    if filters.subsource:
+        query += " AND l.subsource = %(subsource)s"
+        params["subsource"] = filters.subsource
     if filters.cs_date:
         query += " AND latest_consultation.latest_consultation_date = %(cs_date)s"
         params["cs_date"] = filters.cs_date
@@ -375,6 +385,7 @@ def get_data(filters):
             "active_inactive_status": row.active_inactive_status,
             "mode": row.mode,
             "source": row.source,
+            "subsource": row.subsource if row.source == "Meta" else "",
             "cs_date": row.cs_date,
             "cs_status": row.cs_status,
             "surgery_date": row.surgery_date,

@@ -259,9 +259,15 @@ formatter: function(value, row, column, data, default_formatter) {
 		  "Quora",
 		  "Pinterest",
 		  "Twitter",
-		  "Just dial",
-		  "Imported Data",
+		"Just dial",
+		"Imported Data",
 		],
+	  },
+	  {
+		fieldname: "subsource",
+		label: __("Sub Source"),
+		fieldtype: "Select",
+		options: ["", "Facebook", "Instagram"],
 	  },
 	  {
 		fieldname: "executive",

@@ -108,6 +108,12 @@ def get_columns() -> list[dict]:
             "width": 150,
         },
         {
+            "label": _("Sub Source"),
+            "fieldtype": "Data",
+            "fieldname": "subsource",
+            "width": 150,
+        },
+        {
             "label": _("Phone No"),
             "fieldtype": "Data",
             "fieldname": "phone_no",
@@ -187,7 +193,7 @@ def get_data(filters: Filters) -> list[dict]:
 
     query = """
         SELECT 
-            l.name, l.source, l.campaign_name, l.contact_number, l.city, l.center, l.first_name,
+            l.name, l.source, l.subsource, l.campaign_name, l.contact_number, l.city, l.center, l.first_name,
             l.distance, l.executive, l.assign_by, l.mode, l.service, l.status, 
             l.created_on, l.full_name,l.source_reference, l.active_inactive_status, ad.ads_name as ad_name,
             latest_surgery.surgery_date, 
@@ -242,6 +248,10 @@ def get_data(filters: Filters) -> list[dict]:
     if filters.get("source"):
         query += " AND l.source = %(source)s"
         params["source"] = filters["source"]
+
+    if filters.get("subsource"):
+        query += " AND l.subsource = %(subsource)s"
+        params["subsource"] = filters["subsource"]
 
     if filters.get("mode"):
         query += " AND l.mode LIKE %(mode)s"
@@ -322,6 +332,7 @@ def get_data(filters: Filters) -> list[dict]:
             "year": lead.get("created_on").strftime("%Y"),
             "created_on": lead.get("created_on"),
             "source": lead.get("source"),
+            "subsource": lead.get("subsource") if lead.get("source") == "Meta" else "",
             "name": f'<strong><a href="/app/lead/{quote(lead.get("name"), safe="")}" style="color: inherit;">{lead.get("full_name")}</a></strong>',
             "phone_no": lead.get("contact_number"),
             "city": lead.get("city"),

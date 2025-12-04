@@ -70,6 +70,12 @@ frappe.query_reports["Reference Report"] = {
       ],
     },
     {
+      fieldname: "subsource",
+      label: __("Sub Source"),
+      fieldtype: "Select",
+      options: ["", "Facebook", "Instagram"],
+    },
+    {
       fieldname: "executive",
       label: __("Executive"),
       fieldtype: "Link",
