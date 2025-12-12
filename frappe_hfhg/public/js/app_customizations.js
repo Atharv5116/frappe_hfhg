@@ -120,7 +120,7 @@ window.MyUtils = {
                                       }; font-weight:600;"></tbody>
                                   </table>
                               </div>
-                              <button id="addReminder" style="margin-top: 10px; background-color: ${
+                              <button id="addReminder" style="display: none; margin-top: 10px; background-color: ${
                                 isDarkTheme ? "#232323" : "#f3f3f3"
                               }; color: ${
           isDarkTheme ? "#f8f8f8" : "#383838"
@@ -160,7 +160,7 @@ window.MyUtils = {
                                       }; font-weight: 600;"></tbody>
                                   </table>
                               </div>
-                              <button id="addConversation" style="margin-top: 10px; background-color: ${
+                              <button id="addConversation" style="display: none; margin-top: 10px; background-color: ${
                                 isDarkTheme ? "#232323" : "#f3f3f3"
                               }; color: ${
           isDarkTheme ? "#f8f8f8" : "#383838"
@@ -169,7 +169,7 @@ window.MyUtils = {
                       </div>
 
       
-                      <button id="saveChanges" style="display: block; width: 60px; position: absolute; bottom: 20px; right: 40px; background-color: ${
+                      <button id="saveChanges" style="display: none; width: 60px; position: absolute; bottom: 20px; right: 40px; background-color: ${
                         isDarkTheme ? "white" : "#171717"
                       }; color: ${
           isDarkTheme ? "black" : "#fff"
@@ -217,21 +217,21 @@ window.MyUtils = {
             const row = `<tr data-index="${index}">
                                 ${
                                   isReminders
-                                    ? `<td class="editable" data-field="date" style="border: 1px solid ${
+                                    ? `<td data-field="date" style="border: 1px solid ${
                                         isDarkTheme ? "#232323" : "#ededed"
-                                      }; padding: 10px 10px;">${formattedDate}</td>`
+                                      }; padding: 10px 10px; cursor: default;">${formattedDate}</td>`
                                     : ""
                                 }
-                            <td class="editable" data-field="description" style="border: 1px solid ${
+                            <td data-field="description" style="border: 1px solid ${
                               isDarkTheme ? "#232323" : "#ededed"
-                            }; padding: 10px 8px; word-break: break-all; white-space: normal;">${
+                            }; padding: 10px 8px; word-break: break-all; white-space: normal; cursor: default;">${
               item.description || ""
             }</td>
                             ${
                               isReminders
-                                ? `<td class="editable" data-field="status" style="border: 1px solid ${
+                                ? `<td data-field="status" style="border: 1px solid ${
                                     isDarkTheme ? "#232323" : "#ededed"
-                                  }; padding: 10px 8px;">${
+                                  }; padding: 10px 8px; cursor: default;">${
                                     item.status || ""
                                   }</td>`
                                 : ""
@@ -263,8 +263,7 @@ window.MyUtils = {
             leadFrm.reminders || [],
             true
           );
-          makeCellsEditable();
-          attachDeleteRowEvent();
+          // Content is read-only - removed makeCellsEditable() and attachDeleteRowEvent()
         };
 
         updateTables();
