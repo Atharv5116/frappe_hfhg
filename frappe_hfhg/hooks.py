@@ -255,7 +255,7 @@ app_include_css = "/assets/frappe_hfhg/css/custom.css"
 scheduler_events = {
     "cron": {
         "0 0 1 * *": [
-            "frappe_hfhg.tasks.add_schedule_entry"
+            "frappe_hfhg.doctor_scheduler.add_schedule_entry_scheduler"
         ]
     }
 }
