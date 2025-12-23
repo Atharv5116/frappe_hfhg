@@ -39,6 +39,7 @@
   "assign_by",
   "note",
   "bt_status",
+ "surgery_checked",
   "surgeries_tab",
   "pending_grafts",
   "grafts_surgeries",
@@ -195,6 +196,14 @@
    "read_only": 1
   },
   {
+  "default": "0",
+  "fieldname": "surgery_checked",
+  "fieldtype": "Check",
+  "label": "Marked in Report",
+  "read_only": 1,
+  "hidden": 1
+ },
+ {
    "default": "Booked",
    "fieldname": "surgery_status",
    "fieldtype": "Select",
