@@ -249,13 +249,34 @@ class Lead(Document):
 				# Check if current user is the executive who created this reminder
 				reminder_executive = reminder.executive or old_reminder.executive
 				if reminder_executive and reminder_executive != current_user_fullname:
-					frappe.throw(
-						_("You cannot close a reminder created by '{0}'. Only the creator can close their own reminder.").format(
-							reminder_executive
-						),
-						title=_("Permission Denied")
-					)
-	
+					# Check if the reminder executive is disabled or doesn't exist
+					can_close = self.can_user_close_reminder(reminder_executive)
+					if not can_close:
+						frappe.throw(
+							_("You cannot close a reminder created by '{0}'. Only the creator can close their own reminder.").format(
+								reminder_executive
+							),
+							title=_("Permission Denied")
+						)
+
+	def can_user_close_reminder(self, reminder_executive_fullname):
+		"""Check if current user can close a reminder created by the given executive.
+		Returns True if the executive is disabled, doesn't exist, or if there are any errors."""
+		try:
+			# Try to find the user by full name
+			user = frappe.db.get_value("User", {"full_name": reminder_executive_fullname}, ["name", "enabled"], as_dict=True)
+
+			if user:
+				# User exists, check if enabled
+				return not user.enabled  # Can close if user is disabled
+			else:
+				# User doesn't exist, anyone can close
+				return True
+		except Exception as e:
+			# If there's any error, allow closing for safety
+			frappe.log_error(f"Error checking user status for reminder permission: {str(e)}")
+			return True
+
 	def before_insert(self):
 		auto_link_ad_name_from_source(self)
 		assignee_doctype, assign_to = None, None  # Ensure these variables are always defined
