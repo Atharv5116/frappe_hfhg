@@ -22,23 +22,8 @@ class Payment(Document):
 					frappe.throw(_("Total paid amount should be greater than 0."))
 				if self.total_amount < paid_amount:
 					frappe.throw(_("Total paid amount should be not greater than total amount."))
-				else:
-					booking = frappe.get_doc("Costing", self.patient)
-					booking.status = "Booking"
-					booking.amount_paid = paid_amount
-					booking.pending_amount = self.total_amount - paid_amount
-					booking.book_date = self.creation
-					booking.booking_transaction_date = self.transaction_date
-					booking.save(ignore_permissions=True)
-					surgery_exists = frappe.db.exists(
-						"Surgery", {"name": self.patient}
-					)
-					if surgery_exists:
-						surgery = frappe.get_doc("Surgery", self.patient)
-						surgery.amount_paid = paid_amount
-						surgery.pending_amount = surgery.total_amount - paid_amount
-						surgery.save(ignore_permissions=True)
-			else:	
+				# Note: Costing update moved to after_insert to ensure payment is actually saved
+			else:
 				paid_amount = 0
 				if self.with_gst_check:
 					paid_amount =  math.floor(self.without_gst_amount + self.with_gst_amount)
@@ -49,7 +34,7 @@ class Payment(Document):
 				else:
 					if self.payment_type == "Surgery":
 						surgery = frappe.get_doc("Surgery", self.patient)
-						
+
 						if paid_amount >= 1 and paid_amount < surgery.pending_amount:
 							surgery.pending_amount = surgery.pending_amount - paid_amount
 							surgery.status = "Partially Paid"
@@ -97,7 +82,7 @@ class Payment(Document):
 				total_amount = self.paid_amount_without_gst + self.paid_amount_with_gst
 				for refund in refunds:
 					total_refund_amount += (refund.without_gst_amount or 0)
-					total_refund_amount += (refund.with_gst_amount or 0)
+					total_refund_amount += (refund.without_gst_amount or 0)
 				if total_refund_amount > total_amount:
 					frappe.throw(_("Refund amount should not be greater than total refund amount." + str(total_refund_amount) + " " + str(total_amount)))
 
@@ -106,6 +91,56 @@ class Payment(Document):
 					surgery.status = "Refunded"
 					surgery.surgery_status = "Cancelled"
 					surgery.save(ignore_permissions=True)
+
+	def after_insert(self):
+		"""Update Costing only after Payment is successfully saved"""
+		if self.type == "Payment" and self.payment_type == "Costing":
+			paid_amount = 0
+			if self.with_gst_check:
+				paid_amount = self.without_gst_amount + self.with_gst_amount
+			else:
+				paid_amount = self.without_gst_amount
+
+			booking = frappe.get_doc("Costing", self.patient)
+			booking.status = "Booking"
+			booking.amount_paid = paid_amount
+			booking.pending_amount = self.total_amount - paid_amount
+			booking.book_date = self.creation
+			booking.booking_transaction_date = self.transaction_date
+			booking.save(ignore_permissions=True)
+			surgery_exists = frappe.db.exists(
+				"Surgery", {"name": self.patient}
+			)
+			if surgery_exists:
+				surgery = frappe.get_doc("Surgery", self.patient)
+				surgery.amount_paid = paid_amount
+				surgery.pending_amount = surgery.total_amount - paid_amount
+				surgery.save(ignore_permissions=True)
+
+	def on_update(self):
+		"""Update Costing when an existing Payment is edited"""
+		if self.type == "Payment" and self.payment_type == "Costing":
+			paid_amount = 0
+			if self.with_gst_check:
+				paid_amount = self.without_gst_amount + self.with_gst_amount
+			else:
+				paid_amount = self.without_gst_amount
+
+			booking = frappe.get_doc("Costing", self.patient)
+			booking.status = "Booking"
+			booking.amount_paid = paid_amount
+			booking.pending_amount = self.total_amount - paid_amount
+			booking.book_date = self.creation
+			booking.booking_transaction_date = self.transaction_date
+			booking.save(ignore_permissions=True)
+			surgery_exists = frappe.db.exists(
+				"Surgery", {"name": self.patient}
+			)
+			if surgery_exists:
+				surgery = frappe.get_doc("Surgery", self.patient)
+				surgery.amount_paid = paid_amount
+				surgery.pending_amount = surgery.total_amount - paid_amount
+				surgery.save(ignore_permissions=True)
 
 	def on_trash(self):
 		if self.type == "Payment":
