@@ -553,7 +553,15 @@ frappe.call({
                 return `${day}-${month}-${year}`; // Convert to dd-mm-yyyy
               }
 
-              const updateTables = () => {
+              const updateTables = async () => {
+                // Auto-close reminders for disabled/non-existing users
+                const remindersChanged = await auto_close_disabled_user_reminders(frm.doc.reminders || []);
+
+                // If reminders were changed, refresh the field
+                if (remindersChanged) {
+                  frm.refresh_field("reminders");
+                }
+
                 populateTable(
                   document.querySelector("#conversationsTable tbody"),
                   frm.doc.conversations || []
@@ -626,15 +634,10 @@ frappe.call({
                         const currentUserInfo = frappe.user_info(frappe.session.user);
                         const currentUserName = currentUserInfo.fullname;
                         const reminderExecutive = reminder.executive;
-                        
-                        // If current user is not the executive, disable the Close option
-                        if (reminderExecutive && reminderExecutive !== currentUserName) {
-                          closeOption.disabled = true;
-                          // If current value is Close but user can't close, reset to Open
-                          if (input.value === "Close") {
-                            input.value = "Open";
-                          }
-                        }
+
+                        // For now, allow the dropdown to show both options
+                        // Permission will be checked on blur/change
+                        // This avoids async timing issues in dropdown creation
                       }
                     } else {
                       input = document.createElement("textarea");
@@ -649,7 +652,7 @@ frappe.call({
 
 
                     // Save changes on blur
-                    input.addEventListener("blur", () => {
+                    input.addEventListener("blur", async () => {
                       const rowIndex = parseInt(this.parentElement.dataset.index);
                       const items = this.closest("#conversationsTable")
                         ? frm.doc.conversations
@@ -664,19 +667,40 @@ frappe.call({
                         const reminderExecutive = reminder.executive;
                         const newStatus = input.value;
                         const oldStatus = originalValue || "Open";
-                        
+
                         // If trying to change from Open to Close, check permission
                         if (oldStatus === "Open" && newStatus === "Close") {
                           if (reminderExecutive && reminderExecutive !== currentUserName) {
-                            frappe.msgprint({
-                              message: `You cannot close a reminder created by '${reminderExecutive}'. Only the creator can close their own reminder.`,
-                              indicator: "orange",
-                              title: "Permission Denied"
-                            });
-                            // Revert to original value
-                            input.value = oldStatus;
-                            this.innerText = oldStatus;
-                            return;
+                            // Check if reminder executive is disabled or doesn't exist
+                            let canClose = false;
+
+                            try {
+                              const userEmail = await get_user_email_from_name(reminderExecutive);
+                              if (userEmail) {
+                                // Check if user is enabled
+                                const userEnabled = await check_user_enabled(userEmail);
+                                canClose = !userEnabled;
+                              } else {
+                                // User doesn't exist, anyone can close
+                                canClose = true;
+                              }
+                            } catch (error) {
+                              // If there's an error checking user status, allow closing for safety
+                              console.warn("Error checking user status for reminder permission, allowing close:", error);
+                              canClose = true;
+                            }
+
+                            if (!canClose) {
+                              frappe.msgprint({
+                                message: `You cannot close a reminder created by '${reminderExecutive}'. Only the creator can close their own reminder.`,
+                                indicator: "orange",
+                                title: "Permission Denied"
+                              });
+                              // Revert to original value
+                              input.value = oldStatus;
+                              this.innerText = oldStatus;
+                              return;
+                            }
                           }
                         }
                       }
@@ -803,18 +827,30 @@ frappe.call({
                 updateTables();
               };
 
-              document.getElementById("addReminder").onclick = function () {
+              document.getElementById("addReminder").onclick = async function () {
                 saveCurrentEdits();
 
-                // Get current user's fullname
+                // Get current user's fullname and email
                 const currentUserInfo = frappe.user_info(frappe.session.user);
                 const currentUserName = currentUserInfo.fullname;
+                const currentUserEmail = frappe.session.user;
+
+                // Check if current user is enabled
+                const userEnabled = await check_user_enabled(currentUserEmail);
+                if (!userEnabled) {
+                  frappe.msgprint({
+                    title: __("Permission Denied"),
+                    message: __("You cannot create reminders because your user account is disabled or does not exist."),
+                    indicator: "red"
+                  });
+                  return;
+                }
 
                 // Check if current user already has an open reminder
                 const userHasOpenReminder = frm.doc.reminders.some(
                   (reminder) => reminder.status === "Open" && reminder.executive === currentUserName
                 );
-                
+
                 if (userHasOpenReminder) {
                   alert(
                     "You already have an open reminder. Please close it before adding a new one."
@@ -1276,25 +1312,43 @@ frappe.ui.form.on("Reminders", {
   
   reminders_refresh(frm) {
     // Make status field read-only for reminders that don't belong to current user
+    // except for reminders created by disabled or non-existing users
     const currentUserInfo = frappe.user_info(frappe.session.user);
     const currentUserName = currentUserInfo.fullname;
-    
+
     frm.fields_dict.reminders.grid.refresh();
-    
+
     // Wait for grid to render, then make status read-only for non-owner reminders
-    setTimeout(() => {
+    setTimeout(async () => {
       if (frm.fields_dict.reminders && frm.fields_dict.reminders.grid) {
-        frm.fields_dict.reminders.grid.grid_rows.forEach((row) => {
+        for (const row of frm.fields_dict.reminders.grid.grid_rows) {
           const reminder = row.doc;
           if (reminder && reminder.executive && reminder.executive !== currentUserName) {
-            // Make status field read-only for this row
-            const statusField = row.grid_form.fields_dict.status;
-            if (statusField) {
-              statusField.df.read_only = 1;
-              statusField.refresh();
+            // Check if the reminder executive is disabled or doesn't exist
+            let canEdit = false;
+            try {
+              const userEmail = await get_user_email_from_name(reminder.executive);
+              if (userEmail) {
+                const userEnabled = await check_user_enabled(userEmail);
+                canEdit = !userEnabled; // Can edit if user is disabled
+              } else {
+                canEdit = true; // Can edit if user doesn't exist
+              }
+            } catch (error) {
+              console.warn("Error checking user status for read-only logic:", error);
+              canEdit = true; // Allow editing if there's an error
+            }
+
+            // Make status field read-only only if the user cannot edit this reminder
+            if (!canEdit) {
+              const statusField = row.grid_form.fields_dict.status;
+              if (statusField) {
+                statusField.df.read_only = 1;
+                statusField.refresh();
+              }
             }
           }
-        });
+        }
       }
     }, 100);
   },
@@ -1973,22 +2027,110 @@ function display_surgery_results(surgeries, patient_name, lead_data, frm) {
 // Helper function to update full_name when first/middle/last name changes
 function update_full_name(frm) {
     let full_name_parts = [];
-    
+
     if (frm.doc.first_name) {
         full_name_parts.push(frm.doc.first_name.trim());
     }
-    
+
     if (frm.doc.middle_name) {
         full_name_parts.push(frm.doc.middle_name.trim());
     }
-    
+
     if (frm.doc.last_name) {
         full_name_parts.push(frm.doc.last_name.trim());
     }
-    
+
     // Join the parts with space and set to full_name field
     frm.set_value('full_name', full_name_parts.join(' '));
 
+}
+
+// Helper function to check if a user is enabled and exists
+function check_user_enabled(user_email) {
+  return new Promise((resolve, reject) => {
+    frappe.call({
+      method: "frappe.client.get_value",
+      args: {
+        doctype: "User",
+        fieldname: "enabled",
+        filters: {
+          name: user_email,
+        },
+      },
+      callback: function (response) {
+        if (response.message) {
+          // User exists, check if enabled
+          resolve(response.message.enabled === 1);
+        } else {
+          // User doesn't exist
+          resolve(false);
+        }
+      },
+      error: function (err) {
+        console.error("Error checking user status:", err);
+        resolve(false);
+      },
+    });
+  });
+}
+
+// Helper function to get user email from fullname
+function get_user_email_from_name(fullname) {
+  return new Promise((resolve, reject) => {
+    frappe.call({
+      method: "frappe.client.get_list",
+      args: {
+        doctype: "User",
+        fields: ["name"],
+        filters: {
+          full_name: fullname,
+        },
+        limit_page_length: 1,
+      },
+      callback: function (response) {
+        if (response.message && response.message.length > 0) {
+          resolve(response.message[0].name);
+        } else {
+          resolve(null);
+        }
+      },
+      error: function (err) {
+        console.error("Error getting user email from name:", err);
+        resolve(null);
+      },
+    });
+  });
+}
+
+// Helper function to automatically close reminders for disabled/non-existing users
+async function auto_close_disabled_user_reminders(reminders) {
+  let needsRefresh = false;
+
+  for (let i = 0; i < reminders.length; i++) {
+    const reminder = reminders[i];
+    if (reminder.status === "Open" && reminder.executive) {
+      // Get user email from fullname
+      const userEmail = await get_user_email_from_name(reminder.executive);
+
+      if (userEmail) {
+        // Check if user is enabled
+        const userEnabled = await check_user_enabled(userEmail);
+        if (!userEnabled) {
+          // User is disabled, close the reminder
+          reminder.status = "Close";
+          needsRefresh = true;
+          console.log(`Auto-closed reminder for disabled user: ${reminder.executive}`);
+        }
+      } else {
+        // User doesn't exist, close the reminder
+        reminder.status = "Close";
+        needsRefresh = true;
+        console.log(`Auto-closed reminder for non-existing user: ${reminder.executive}`);
+      }
+    }
+  }
+
+  return needsRefresh;
 }
 
 // Apply mandatory field rules based on status
