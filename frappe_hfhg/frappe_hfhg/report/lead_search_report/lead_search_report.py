@@ -38,6 +38,13 @@ def get_columns() -> list[dict]:
 			"fieldname": "executive",
 			"width": 190,
 		},
+		{
+			"label": _("Center"),
+			"fieldtype": "Link",
+			"fieldname": "center",
+			"options": "Center",
+			"width": 150,
+		},
         {
             "label": _("Status"),
             "fieldtype": "Data",
@@ -106,7 +113,7 @@ def get_data(filters: Filters) -> list[dict]:
         query = """
             SELECT 
                 l.name, l.status, l.contact_number, l.alternative_number, l.executive,
-                l.source, l.subsource, l.created_on
+                l.center, l.source, l.subsource, l.created_on
             FROM 
                 `tabLead` l
             WHERE 
@@ -121,6 +128,7 @@ def get_data(filters: Filters) -> list[dict]:
             "contact_number": lead.get("contact_number"),
             "alternative_number": lead.get("alternative_number"),
             "executive": lead.get("executive"),
+            "center": lead.get("center"),
             "status": lead.get("status"),
             "source": lead.get("source") or "",
             "subsource": lead.get("subsource") or "",
