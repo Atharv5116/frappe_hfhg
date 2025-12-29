@@ -6,37 +6,41 @@ from datetime import date
 
 class Bulletin(Document):
 	def validate(self):
-		# Ensure only one active bulletin exists
-		if self.is_active:
-			# Check if there are other active bulletins
-			existing_active = frappe.db.get_value(
-				"Bulletin",
-				{"is_active": 1, "name": ["!=", self.name]},
-				"name"
-			)
-			if existing_active:
-				frappe.throw(_("Only one active bulletin can exist at a time. Please deactivate the existing bulletin first."))
+		# Allow multiple active bulletins - validation removed
+		pass
 
 
 @frappe.whitelist()
 def get_active_bulletin():
-	"""Get the active bulletin message for display in navbar"""
+	"""Get all active bulletin messages for display in navbar"""
 	today = date.today()
 	
-	# Find active bulletin that is within date range (if dates are set)
-	bulletin = frappe.db.sql("""
-		SELECT name, message, start_date, end_date
-		FROM `tabBulletin`
-		WHERE is_active = 1
-		AND (
-			(start_date IS NULL OR start_date <= %(today)s)
-			AND (end_date IS NULL OR end_date >= %(today)s)
-		)
-		ORDER BY modified DESC
-		LIMIT 1
-	""", {"today": today}, as_dict=True)
+	# Find all active bulletins that are within date range (if dates are set)
+	# Use get_all for better compatibility
+	bulletins = frappe.get_all(
+		"Bulletin",
+		filters={
+			"is_active": 1
+		},
+		fields=["name", "message", "start_date", "end_date"],
+		order_by="modified DESC"
+	)
 	
-	if bulletin:
-		return bulletin[0]
-	return None
+	# Filter by date range manually to handle NULL dates properly
+	filtered_bulletins = []
+	for bulletin in bulletins:
+		start_date = bulletin.get("start_date")
+		end_date = bulletin.get("end_date")
+		
+		# Check if bulletin is within date range
+		# If start_date is set, today must be >= start_date
+		# If end_date is set, today must be <= end_date
+		# If dates are NULL, bulletin is always valid
+		start_valid = start_date is None or start_date <= today
+		end_valid = end_date is None or end_date >= today
+		
+		if start_valid and end_valid:
+			filtered_bulletins.append(bulletin)
+	
+	return filtered_bulletins
 

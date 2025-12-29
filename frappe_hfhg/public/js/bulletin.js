@@ -9,7 +9,7 @@
   // Set global flag
   window.bulletinScriptLoaded = true;
   
-  // Function to get active bulletin from API
+  // Function to get active bulletins from API
   function getActiveBulletin() {
     if (typeof frappe === 'undefined' || !frappe.call) {
       console.log('[Bulletin] Frappe not ready, retrying...');
@@ -20,15 +20,44 @@
     frappe.call({
       method: "frappe_hfhg.frappe_hfhg.doctype.bulletin.bulletin.get_active_bulletin",
       callback: function(r) {
-        if (r && r.message && r.message.message) {
-          console.log('[Bulletin] Found active bulletin:', r.message.name);
-          showBulletin(r.message.message);
+        console.log('[Bulletin] API Response:', r);
+        if (r && r.message) {
+          // Handle both array and single object responses (backward compatibility)
+          let bulletins = [];
+          if (Array.isArray(r.message)) {
+            bulletins = r.message;
+          } else if (r.message.message) {
+            // Single bulletin object (old format)
+            bulletins = [r.message];
+          }
+          
+          if (bulletins.length > 0) {
+            console.log('[Bulletin] Found', bulletins.length, 'active bulletin(s)');
+            showBulletins(bulletins);
+          } else {
+            console.log('[Bulletin] No active bulletins found');
+            // Remove existing bulletin if no active ones
+            const existing = document.getElementById('custom-bulletin-announcement');
+            if (existing) {
+              existing.remove();
+            }
+          }
         } else {
-          console.log('[Bulletin] No active bulletin found');
+          console.log('[Bulletin] No message in response');
+          // Remove existing bulletin if no active ones
+          const existing = document.getElementById('custom-bulletin-announcement');
+          if (existing) {
+            existing.remove();
+          }
         }
       },
       error: function(err) {
         console.error('[Bulletin] API Error:', err);
+        // Remove existing bulletin on error
+        const existing = document.getElementById('custom-bulletin-announcement');
+        if (existing) {
+          existing.remove();
+        }
       }
     });
   }
@@ -115,10 +144,10 @@
     }
   }
   
-  // Function to show bulletin in navbar
-  function showBulletin(message) {
-    // Show bulletin on ALL pages (removed home page restriction)
-    console.log('[Bulletin] showBulletin called - showing on current page');
+  // Function to show multiple bulletins in navbar
+  function showBulletins(bulletins) {
+    // Show bulletins on ALL pages (removed home page restriction)
+    console.log('[Bulletin] showBulletins called - showing', bulletins.length, 'bulletin(s) on current page');
     
     // Remove existing bulletin
     const existing = document.getElementById('custom-bulletin-announcement');
@@ -126,12 +155,27 @@
       existing.remove();
     }
     
-    // Extract text from HTML
-    const text = extractText(message);
-    if (!text || !text.trim()) {
-      console.log('[Bulletin] No text to display');
+    // Extract texts from HTML for all bulletins
+    const bulletinTexts = [];
+    bulletins.forEach(function(bulletinItem) {
+      const text = extractText(bulletinItem.message);
+      if (text && text.trim()) {
+        bulletinTexts.push(text.trim());
+      }
+    });
+    
+    if (bulletinTexts.length === 0) {
+      console.log('[Bulletin] No valid text to display');
       return;
     }
+    
+    // Combine all bulletins into a single message with bullet points
+    const combinedText = bulletinTexts.map(function(text, index) {
+      return '• ' + text;
+    }).join('\n');
+    
+    // Use the combined text for display
+    const displayText = combinedText;
     
     // Create bulletin container - LIGHT BLUE STYLING - ALIGNED WITH SEARCH BAR
     const bulletin = document.createElement('div');
@@ -151,8 +195,10 @@
     // Create message span - always start collapsed
     const messageSpan = document.createElement('span');
     messageSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;display:inline-block;vertical-align:middle;line-height:1.4;';
-    messageSpan.textContent = text;
-    messageSpan.title = text; // Show full text on hover
+    // Show first bulletin text in collapsed view
+    const firstBulletinText = bulletinTexts[0];
+    messageSpan.textContent = firstBulletinText;
+    messageSpan.title = displayText; // Show all bulletins on hover
     
     // Create expand/collapse button - LIGHT BLUE THEME - MATCHES HEIGHT
     const expandButton = document.createElement('button');
@@ -201,20 +247,23 @@
       isExpanded = false;
       console.log('[Bulletin] Collapsing bulletin...');
       
-      // Collapse - hide popover and show truncated text
-      messageSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;display:inline-block;vertical-align:middle;line-height:1.4;';
+      // Update button text and title
       expandButton.textContent = 'Expand';
       expandButton.title = 'Click to expand message';
       
       // Remove click-outside listener when collapsing
       removeClickOutsideListener();
       
-      // Hide popover
+      // Hide popover - hide it completely
       const popover = document.getElementById('bulletin-popover');
       if (popover) {
         popover.style.display = 'none';
+        popover.style.visibility = 'hidden';
+        popover.style.opacity = '0';
       }
       
+      // Reset styles to collapsed state
+      messageSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;display:inline-block;vertical-align:middle;line-height:1.4;';
       bulletin.style.height = '28px';
       bulletin.style.padding = '0 12px';
       bulletin.style.maxWidth = '400px';
@@ -239,8 +288,10 @@
         e.preventDefault();
       }
       
+      console.log('[Bulletin] Toggle expand clicked, current state:', isExpanded, 'Bulletins count:', bulletinTexts.length);
+      
+      // Toggle the state
       isExpanded = !isExpanded;
-      console.log('[Bulletin] Toggle expand, new state:', isExpanded, 'Text length:', text.length);
       
       if (isExpanded) {
         // Expand - show full text in a popover below the navbar
@@ -252,8 +303,9 @@
         if (!popover) {
           popover = document.createElement('div');
           popover.id = 'bulletin-popover';
-          popover.style.cssText = 'position:absolute;top:100%;left:0;margin-top:8px;background:linear-gradient(135deg, #f5f9fc 0%, #e8f4f8 100%);border:1px solid #b3d9f2;border-radius:8px;padding:16px 20px;box-shadow:0 4px 12px rgba(179,217,242,0.25), 0 2px 6px rgba(0,0,0,0.1);z-index:10000;min-width:400px;max-width:600px;color:#6b8ba3;font-size:14px;line-height:1.6;word-wrap:break-word;';
-          popover.textContent = text;
+          popover.style.cssText = 'position:absolute;top:100%;left:0;margin-top:8px;background:linear-gradient(135deg, #f5f9fc 0%, #e8f4f8 100%);border:1px solid #b3d9f2;border-radius:8px;padding:16px 20px;box-shadow:0 4px 12px rgba(179,217,242,0.25), 0 2px 6px rgba(0,0,0,0.1);z-index:10000;min-width:400px;max-width:600px;color:#6b8ba3;font-size:14px;line-height:1.6;word-wrap:break-word;white-space:pre-line;display:block;visibility:visible;opacity:1;';
+          // Display all bulletins with bullet points
+          popover.textContent = displayText;
           bulletin.style.position = 'relative';
           bulletin.appendChild(popover);
           
@@ -262,7 +314,13 @@
             e.stopPropagation();
           });
         } else {
+          // Re-add to DOM if it was removed
+          if (!popover.parentElement) {
+            bulletin.appendChild(popover);
+          }
           popover.style.display = 'block';
+          popover.style.visibility = 'visible';
+          popover.style.opacity = '1';
         }
         
         // Keep bulletin collapsed but show popover
@@ -327,16 +385,19 @@
         console.log('[Bulletin] ✓ Expanded - Popover shown');
       } else {
         // Collapse using the dedicated function
+        console.log('[Bulletin] Collapsing from toggle...');
         collapseBulletin();
       }
     }
     
-    // Make button clickable
-    expandButton.addEventListener('click', function(e) {
+    // Make button clickable - use direct event handler
+    expandButton.onclick = function(e) {
       e.stopPropagation();
       e.preventDefault();
+      console.log('[Bulletin] Expand button clicked');
       toggleExpand(e);
-    });
+      return false;
+    };
     
     // Append elements - VERIFY EACH STEP
     console.log('[Bulletin] Appending messageSpan to messageContainer');
@@ -380,7 +441,7 @@
       }
     }, 500);
     
-    console.log('[Bulletin] Bulletin created with visible Expand button (text length: ' + text.length + ' chars)');
+    console.log('[Bulletin] Bulletin created with visible Expand button (' + bulletinTexts.length + ' bulletin(s))');
     
     // Find insertion point - try multiple locations
     // Ensure containers allow overflow so expanded content stays visible
