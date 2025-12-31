@@ -8,6 +8,58 @@ from frappe.share import set_permission
 
 
 class DoctorFollowup(Document):
+	def before_insert(self):
+		if self.reference_type and self.reference_name:
+			# Count existing followups for the same reference, sorted by creation date
+			existing_followups = frappe.get_all(
+				"Doctor Followup",
+				filters={
+					"reference_type": self.reference_type,
+					"reference_name": self.reference_name
+				},
+				fields=["name"],
+				order_by="creation asc"
+			)
+			# Sequence number is count + 1
+			sequence_number = len(existing_followups) + 1
+			self.label = self.get_followup_label(sequence_number)
+
+	def validate(self):
+		# Auto-populate label if it's empty
+		if self.reference_type and self.reference_name and not self.label:
+			# Count existing followups for the same reference, sorted by creation date
+			existing_followups = frappe.get_all(
+				"Doctor Followup",
+				filters={
+					"reference_type": self.reference_type,
+					"reference_name": self.reference_name
+				},
+				fields=["name"],
+				order_by="creation asc"
+			)
+			# Find this followup's position in the sequence
+			sequence_number = None
+			for i, followup in enumerate(existing_followups):
+				if followup.name == self.name:
+					sequence_number = i + 1
+					break
+			if sequence_number:
+				self.label = self.get_followup_label(sequence_number)
+
+	def on_update(self):
+		pass
+
+	def get_followup_label(self, sequence_number):
+		"""Get the label for a followup based on its sequence number"""
+		labels = {
+			1: "Bandage Removal (1st post-transplant call)",
+			2: "Head Wash Follow-Up Call",
+			3: "Post Head Wash Feedback Call + Scalp Pictures + Medication Guidance",
+			4: "Minoxidil Application Guidance Call",
+			5: "Baby Hair & Shedding Phase Review + 1st PRP Session"
+		}
+		return labels.get(sequence_number, "")
+
 	def on_update(self):
 		if self.allocated_to:
 			user = self.allocated_to
