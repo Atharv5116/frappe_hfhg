@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "title",
+  "label",
   "date",
   "center",
   "column_break_jmba",
@@ -132,11 +133,17 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Patient contact number"
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-17 20:43:29.753813",
+ "modified": "2025-12-31 21:39:54.942015",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
  "name": "Doctor Followup",
@@ -156,6 +163,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
