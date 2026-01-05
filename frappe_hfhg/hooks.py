@@ -245,9 +245,13 @@ override_whitelisted_methods = {
     "frappe.utils.global_search.search": "frappe_hfhg.api.custom_global_search"
 }
 
-# permission_query_conditions = {
-#     "Payment": "frappe_hfhg.api.payment_permission_query_conditions",
-# }
+permission_query_conditions = {
+	"Lead": "frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.get_center_permission_query_condition",
+	"Costing": "frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.get_center_permission_query_condition",
+	"Consultation": "frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.get_center_permission_query_condition",
+	"Surgery": "frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.get_center_permission_query_condition",
+	"Doctor Followup": "frappe_hfhg.frappe_hfhg.doctype.future_surgery_assignment.future_surgery_assignment.get_future_surgery_permission_query_condition",
+}
 
 after_install = "frappe_hfhg.install.after_install"
 app_include_css = "/assets/frappe_hfhg/css/custom.css"
