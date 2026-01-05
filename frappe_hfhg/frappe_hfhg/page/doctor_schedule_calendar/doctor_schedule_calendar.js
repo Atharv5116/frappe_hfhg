@@ -407,11 +407,46 @@ function displaySlots($container, slots, doctor, doctorName) {
 								<tbody>
 	`;
 	
+	// Helper function to convert slot time to sortable minutes
+	function getSlotTimeIndex(slotTime) {
+		if (!slotTime) return 0;
+		try {
+			// Parse time string like "10:00 AM" or "01:00 PM"
+			let timeStr = slotTime.replace(/\s/g, '');
+			let timePart = timeStr.slice(0, -2); // "10:00" or "01:00"
+			let ampm = timeStr.slice(-2).toUpperCase(); // "AM" or "PM"
+			let [hour, minute] = timePart.split(':').map(Number);
+			
+			// Convert to 24-hour format
+			if (ampm === 'PM' && hour !== 12) {
+				hour += 12;
+			} else if (ampm === 'AM' && hour === 12) {
+				hour = 0;
+			}
+			
+			// Return minutes since midnight for sorting
+			return hour * 60 + minute;
+		} catch (e) {
+			return 0;
+		}
+	}
+	
 	// Sort dates
 	let sortedDates = Object.keys(slotsByDate).sort();
 	
 	sortedDates.forEach(function(date) {
 		let dateSlots = slotsByDate[date];
+		// Sort slots within each date by time, then by mode
+		dateSlots.sort(function(a, b) {
+			let timeA = getSlotTimeIndex(a.slot);
+			let timeB = getSlotTimeIndex(b.slot);
+			if (timeA !== timeB) {
+				return timeA - timeB;
+			}
+			// If same time, sort by mode (In-Person before Call)
+			return (a.mode || '').localeCompare(b.mode || '');
+		});
+		
 		let dateObj = new Date(date);
 		let dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 		

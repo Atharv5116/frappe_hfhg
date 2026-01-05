@@ -65,25 +65,42 @@ def add_schedule_entry_scheduler():
 def add_schedule_entry(skip_processed=False, batch_size=10):
     """
     Automatically add schedule slots for all doctors on the 1st of every month.
-    Generates slots for the entire current month based on each doctor's settings:
+    Generates slots for the next 3 months (current month + next 2 months) based on each doctor's settings:
     - from_slot and to_slot (time range)
-    - mode_of_appointment (In-Person/Call)
     - patients_per_slot
     - Day checkboxes (sunday, monday, tuesday, etc.)
+    - Creates slots for BOTH modes: In-Person AND Call (irrespective of doctor's mode_of_appointment setting)
     
     Args:
         skip_processed: If True, skip doctors that already have from_date set to first day of current month
         batch_size: Number of doctors to process before committing (default: 10)
     """
     try:
-        # Get current date and determine the month to generate slots for
+        # Get current date and determine the date range for next 3 months
         today = getdate(now())
         current_month = today.month
         current_year = today.year
         
-        # Get first day of current month and number of days in month
+        # Get first day of current month (start date)
         first_day_month = today.replace(day=1)
-        days_in_month = calendar.monthrange(current_year, current_month)[1]
+        
+        # Calculate last day of 3rd month (current + 2 more months)
+        # Calculate the month number for the 3rd month
+        target_month = current_month + 2  # 2 months ahead (3rd month total)
+        
+        # Handle year rollover
+        if target_month > 12:
+            target_month = target_month - 12
+            target_year = current_year + 1
+        else:
+            target_year = current_year
+        
+        # Get last day of the 3rd month
+        days_in_last_month = calendar.monthrange(target_year, target_month)[1]
+        last_day_range = getdate(f"{target_year}-{target_month:02d}-{days_in_last_month}")
+        
+        # Calculate total days across 3 months
+        total_days = (last_day_range - first_day_month).days + 1
         
         # Get all doctors with their schedule settings
         doctors = frappe.get_all(
@@ -115,12 +132,11 @@ def add_schedule_entry(skip_processed=False, batch_size=10):
             return
         
         slots_added_count = 0
-        last_day_month = add_days(first_day_month, days_in_month - 1)
         doctors_processed = 0
         total_doctors = len(doctors)
         
-        print(f"\n📋 Processing {total_doctors} doctors for {current_month}/{current_year}")
-        print(f"   Date range: {first_day_month} to {last_day_month}\n")
+        print(f"\n📋 Processing {total_doctors} doctors for next 3 months")
+        print(f"   Date range: {first_day_month} to {last_day_range} ({total_days} days)\n")
         
         for idx, doctor in enumerate(doctors, 1):
             doctor_name = doctor['name']
@@ -148,8 +164,9 @@ def add_schedule_entry(skip_processed=False, batch_size=10):
                     continue
                 
                 # Get doctor's other settings
-                mode_of_appointment = doctor.get('mode_of_appointment') or 'In-Person'
+                # Note: We'll create slots for BOTH modes regardless of doctor's setting
                 patients_per_slot = doctor.get('patients_per_slot') or 0
+                appointment_modes = ["In-Person", "Call"]  # Generate slots for both modes
                 
                 # Get enabled days (checkboxes that are checked)
                 enabled_days = []
@@ -161,8 +178,9 @@ def add_schedule_entry(skip_processed=False, batch_size=10):
                     frappe.logger().info(f"Skipping doctor {doctor_name}: No days selected")
                     continue
                 
-                # Query existing slots for this doctor in the current month to avoid duplicates
+                # Query existing slots for this doctor in the 3-month range to avoid duplicates
                 # This is much faster than loading the full doctor document with all slots
+                # Include mode in the check to avoid duplicates
                 existing_slots_set = set()
                 
                 existing_slots = frappe.get_all(
@@ -170,15 +188,15 @@ def add_schedule_entry(skip_processed=False, batch_size=10):
                     filters=[
                         ["doctor", "=", doctor_name],
                         ["date", ">=", first_day_month],
-                        ["date", "<=", last_day_month]
+                        ["date", "<=", last_day_range]
                     ],
-                    fields=["date", "slot"]
+                    fields=["date", "slot", "mode"]
                 )
                 
                 for existing_slot in existing_slots:
-                    if existing_slot.date and existing_slot.slot:
+                    if existing_slot.date and existing_slot.slot and existing_slot.mode:
                         date_str = getdate(existing_slot.date).strftime("%Y-%m-%d")
-                        existing_slots_set.add((date_str, existing_slot.slot))
+                        existing_slots_set.add((date_str, existing_slot.slot, existing_slot.mode))
                 
                 # Load doctor document only when we need to add slots
                 doctor_doc = None
@@ -186,9 +204,13 @@ def add_schedule_entry(skip_processed=False, batch_size=10):
                 new_slots_added = False
                 doctor_slots_count = 0
                 
-                # Generate slots for each day in the month
-                for day_offset in range(days_in_month):
+                # Generate slots for each day in the 3-month range
+                for day_offset in range(total_days):
                     current_date = add_days(first_day_month, day_offset)
+                    
+                    # Skip if date is beyond the 3-month range
+                    if current_date > last_day_range:
+                        break
                     
                     # Get Python weekday (0=Monday, 6=Sunday)
                     python_weekday = current_date.weekday()
@@ -204,41 +226,43 @@ def add_schedule_entry(skip_processed=False, batch_size=10):
                     for slot_index in range(from_slot_index, to_slot_index + 1):
                         slot_time = ALL_SLOTS[slot_index]
                         
-                        # Check if slot already exists
-                        date_str = current_date.strftime("%Y-%m-%d")
-                        if (date_str, slot_time) in existing_slots_set:
-                            continue
-                        
-                        # Lazy load doctor document only when we need to add slots
-                        if doctor_doc is None:
-                            doctor_doc = frappe.get_doc("Doctor", doctor_name)
-                        
-                        # Add new slot
-                        doctor_doc.append("table_schedule", {
-                            "doctor": doctor_name,
-                            "date": current_date,
-                            "day": day_name,
-                            "slot": slot_time,
-                            "mode": mode_of_appointment,
-                            "patients": patients_per_slot
-                        })
-                        new_slots_added = True
-                        doctor_slots_count += 1
-                        slots_added_count += 1
+                        # Create slots for BOTH modes (In-Person and Call)
+                        for mode_of_appointment in appointment_modes:
+                            # Check if slot already exists (with mode)
+                            date_str = current_date.strftime("%Y-%m-%d")
+                            if (date_str, slot_time, mode_of_appointment) in existing_slots_set:
+                                continue
+                            
+                            # Lazy load doctor document only when we need to add slots
+                            if doctor_doc is None:
+                                doctor_doc = frappe.get_doc("Doctor", doctor_name)
+                            
+                            # Add new slot for this mode
+                            doctor_doc.append("table_schedule", {
+                                "doctor": doctor_name,
+                                "date": current_date,
+                                "day": day_name,
+                                "slot": slot_time,
+                                "mode": mode_of_appointment,
+                                "patients": patients_per_slot
+                            })
+                            new_slots_added = True
+                            doctor_slots_count += 1
+                            slots_added_count += 1
                 
-                # Update from_date and to_date to reflect the date range for which slots were generated
+                # Update from_date and to_date to reflect the 3-month date range for which slots were generated
                 # Only load and save doctor document if we added new slots or dates need updating
                 if new_slots_added:
                     # doctor_doc is already loaded if we added slots
                     doctor_doc.from_date = first_day_month
-                    doctor_doc.to_date = last_day_month
+                    doctor_doc.to_date = last_day_range
                     doctor_doc.save(ignore_permissions=True)
                 else:
                     # Check if dates need updating even if no new slots
                     doctor_doc = frappe.get_doc("Doctor", doctor_name)
-                    if doctor_doc.from_date != first_day_month or doctor_doc.to_date != last_day_month:
+                    if doctor_doc.from_date != first_day_month or doctor_doc.to_date != last_day_range:
                         doctor_doc.from_date = first_day_month
-                        doctor_doc.to_date = last_day_month
+                        doctor_doc.to_date = last_day_range
                         doctor_doc.save(ignore_permissions=True)
                 
                 if new_slots_added:
