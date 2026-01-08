@@ -11,7 +11,7 @@
  "is_standard": "Yes",
  "json": "{}",
  "letterhead": null,
- "modified": "2025-07-02 16:40:40.872509",
+ "modified": "2026-01-08 16:16:22.831299",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
  "name": "Master Reminder Report",
@@ -38,6 +38,9 @@
   },
   {
    "role": "Administrator"
+  },
+  {
+   "role": "Future Surgery"
   }
  ],
  "timeout": 0

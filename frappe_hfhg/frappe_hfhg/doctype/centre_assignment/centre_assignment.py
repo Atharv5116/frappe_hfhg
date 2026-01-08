@@ -199,6 +199,74 @@ def get_assigned_centres_for_user(user=None):
 	return [c.center for c in assignment_doc.centres]
 
 
+def apply_marketing_head_center_filter(query, params, center_field="center", table_alias=""):
+	"""Helper function for reports to apply center filtering for Marketing Head(new) role
+	Returns modified query and params with center filtering applied
+	
+	Args:
+		query: SQL query string
+		params: Query parameters dict
+		center_field: Name of the center field (default: "center")
+		table_alias: Table alias prefix (e.g., "l." for leads table)
+	
+	Returns:
+		tuple: (modified_query, modified_params)
+	"""
+	user = frappe.session.user
+	roles = frappe.get_roles()
+	
+	# Check if user has Marketing Head(new) role
+	if "Marketing Head(new)" not in roles:
+		return query, params
+	
+	# Get assigned centres for the user
+	assigned_centres = get_assigned_centres_for_user(user)
+	
+	if not assigned_centres:
+		# No centres assigned, return query that matches nothing
+		return query + " AND 1=0", params
+	
+	# Add center filter to query
+	center_prefix = f"{table_alias}." if table_alias else ""
+	if len(assigned_centres) == 1:
+		query += f" AND {center_prefix}`{center_field}` = %(marketing_head_center)s"
+		params["marketing_head_center"] = assigned_centres[0]
+	else:
+		query += f" AND {center_prefix}`{center_field}` IN %(marketing_head_centres)s"
+		params["marketing_head_centres"] = tuple(assigned_centres)
+	
+	return query, params
+
+
+def filter_data_by_assigned_centres(data, center_field="center"):
+	"""Helper function to filter data list by assigned centres for Marketing Head(new) role
+	Useful for reports that fetch data first and then filter
+	
+	Args:
+		data: List of dictionaries containing report data
+		center_field: Name of the center field in the data
+	
+	Returns:
+		Filtered list of data
+	"""
+	user = frappe.session.user
+	roles = frappe.get_roles()
+	
+	# Check if user has Marketing Head(new) role
+	if "Marketing Head(new)" not in roles:
+		return data
+	
+	# Get assigned centres for the user
+	assigned_centres = get_assigned_centres_for_user(user)
+	
+	if not assigned_centres:
+		# No centres assigned, return empty list
+		return []
+	
+	# Filter data by assigned centres
+	return [row for row in data if row.get(center_field) in assigned_centres]
+
+
 def get_center_permission_query_condition(user, doctype=None):
 	"""Permission query condition to filter by assigned centres for Marketing Head(new) role
 	Similar to how executives are filtered to only see their assigned leads"""
@@ -248,28 +316,15 @@ def get_all_users(doctype, txt, searchfield, start, page_len, filters):
 	limit = max(page_len or 10, 10000)
 	role = "Marketing Head(new)"
 	
-	# Try direct SQL query to get users with the role
-	# First check if role exists, if not try to find similar role names
+	# Strictly check if the exact role exists, return empty if not
 	role_exists = frappe.db.exists("Role", role)
 	
 	if not role_exists:
-		# Try to find similar role names
-		similar_roles = frappe.db.sql("""
-			SELECT name FROM `tabRole` 
-			WHERE name LIKE %(pattern)s
-		""", {
-			'pattern': '%Marketing Head%'
-		}, as_dict=True)
-		
-		if similar_roles:
-			# Use the first similar role found
-			role = similar_roles[0].name
-			frappe.logger().info(f"Role 'Marketing Head(new)' not found, using '{role}' instead")
-		else:
-			# No similar role found, return empty
-			frappe.logger().warning(f"Role 'Marketing Head(new)' not found and no similar roles found")
-			return []
+		# Role doesn't exist, return empty list
+		frappe.logger().warning(f"Role 'Marketing Head(new)' not found")
+		return []
 	
+	# Get users with the exact role only
 	users_with_role = frappe.db.sql("""
 		SELECT DISTINCT hr.parent as user_name
 		FROM `tabHas Role` hr

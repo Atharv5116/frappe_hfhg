@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from urllib.parse import quote
 from pypika.functions import Max
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import apply_marketing_head_center_filter
 
 Filters = frappe._dict
 
@@ -324,6 +325,9 @@ def get_data(filters) -> list[dict]:
 		if executive:
 			query += " AND s.executive = %(executive)s"
 			params["executive"] = executive
+	
+	# Apply center filtering for Marketing Head(new) role
+	query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="s")
 
 	surgeries = frappe.db.sql(query, params, as_dict=True)
 
