@@ -7,10 +7,10 @@
  "docstatus": 0,
  "doctype": "Report",
  "filters": [],
- "idx": 0,
+ "idx": 2,
  "is_standard": "Yes",
- "letterhead": null,
- "modified": "2025-06-25 11:05:17.670033",
+ "letter_head": null,
+ "modified": "2026-01-13 17:58:33.736529",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
  "name": "Consultation Report",
@@ -31,6 +31,9 @@
   },
   {
    "role": "HOD"
+  },
+  {
+   "role": "Campaign"
   }
  ],
  "timeout": 0

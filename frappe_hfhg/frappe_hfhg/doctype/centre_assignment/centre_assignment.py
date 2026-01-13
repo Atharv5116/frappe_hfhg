@@ -72,7 +72,10 @@ class CentreAssignment(Document):
 					frappe.logger().error(f"Error granting permissions for {doctype}: {str(e)}")
 	
 	def grant_report_permissions(self):
-		"""Grant permissions for reports excluding master reports"""
+		"""Grant permissions for reports excluding master reports
+		This method automatically syncs all roles from Report JSON files to Custom Role records,
+		ensuring that any new roles added to JSON files are automatically included.
+		"""
 		role = "Marketing Head(new)"
 		
 		# Get all reports excluding master reports
@@ -88,6 +91,10 @@ class CentreAssignment(Document):
 		for report in reports:
 			report_name = report.name
 			try:
+				# Get standard roles from the report JSON file
+				report_doc = frappe.get_doc("Report", report_name)
+				json_roles = [r.role for r in report_doc.roles]
+				
 				# Check if Custom Role exists for this report
 				custom_role_name = frappe.db.get_value(
 					"Custom Role",
@@ -96,32 +103,54 @@ class CentreAssignment(Document):
 				)
 				
 				if custom_role_name:
-					# Add role to existing Custom Role
+					# Custom Role exists - sync roles from JSON and ensure our role is present
 					custom_role_doc = frappe.get_doc("Custom Role", custom_role_name)
-					existing_roles = [r.role for r in custom_role_doc.roles]
-					if role not in existing_roles:
-						custom_role_doc.append("roles", {"role": role})
+					existing_custom_roles = [r.role for r in custom_role_doc.roles]
+					
+					# Start with all roles from JSON (source of truth)
+					# This ensures any new roles added to JSON are automatically included
+					final_roles = json_roles.copy()
+					
+					# Add "Marketing Head(new)" role if not already in JSON roles
+					if role not in final_roles:
+						final_roles.append(role)
+					
+					# Check if Custom Role needs to be updated
+					# Update if: roles differ or "Marketing Head(new)" is missing
+					roles_changed = set(existing_custom_roles) != set(final_roles)
+					
+					if roles_changed:
+						# Clear existing roles and rebuild from final_roles
+						custom_role_doc.set("roles", [])
+						for role_name in final_roles:
+							custom_role_doc.append("roles", {"role": role_name})
+						
 						custom_role_doc.save(ignore_permissions=True)
-						frappe.logger().info(f"Added role {role} to Custom Role for report {report_name}")
+						frappe.db.commit()
+						frappe.logger().info(
+							f"Synced roles for report {report_name}: {final_roles} "
+							f"(updated from JSON: {json_roles})"
+						)
 				else:
-					# Create new Custom Role for this report
-					# First get standard roles from the report
-					report_doc = frappe.get_doc("Report", report_name)
-					standard_roles = [{"role": r.role} for r in report_doc.roles]
+					# No Custom Role exists - create one with all JSON roles + our role
+					final_roles = json_roles.copy()
 					
 					# Add our role if not already present
-					standard_role_names = [r["role"] for r in standard_roles]
-					if role not in standard_role_names:
-						standard_roles.append({"role": role})
+					if role not in final_roles:
+						final_roles.append(role)
 					
-					# Create Custom Role
+					# Create Custom Role with all roles
+					roles_list = [{"role": r} for r in final_roles]
 					custom_role_doc = frappe.get_doc({
 						"doctype": "Custom Role",
 						"report": report_name,
-						"roles": standard_roles
+						"roles": roles_list
 					})
 					custom_role_doc.insert(ignore_permissions=True)
-					frappe.logger().info(f"Created Custom Role for report {report_name} with role {role}")
+					frappe.db.commit()
+					frappe.logger().info(
+						f"Created Custom Role for report {report_name} with roles: {final_roles}"
+					)
 			except Exception as e:
 				frappe.logger().error(f"Error granting report permission for {report_name}: {str(e)}")
 	
@@ -436,6 +465,181 @@ def debug_marketing_head_users():
 		"all_marketing_roles": [r.name for r in all_marketing_roles],
 		"users_with_specific_role": users_with_role,
 		"all_marketing_users": all_marketing_users
+	}
+
+
+def sync_single_report_permissions(doc, method):
+	"""Sync permissions for a single report when it's updated.
+	This is called via doc_events hook when a Report is saved.
+	"""
+	# Skip master reports
+	if doc.name.startswith("Master"):
+		return
+	
+	# Skip if report is disabled
+	if doc.disabled:
+		return
+	
+	try:
+		role = "Marketing Head(new)"
+		report_name = doc.name
+		
+		# Get standard roles from the report JSON file (now in doc)
+		json_roles = [r.role for r in doc.roles]
+		
+		# Check if Custom Role exists for this report
+		custom_role_name = frappe.db.get_value(
+			"Custom Role",
+			{"report": report_name},
+			"name"
+		)
+		
+		if custom_role_name:
+			# Custom Role exists - sync roles from JSON
+			custom_role_doc = frappe.get_doc("Custom Role", custom_role_name)
+			existing_custom_roles = [r.role for r in custom_role_doc.roles]
+			
+			# Start with all roles from JSON (source of truth)
+			final_roles = json_roles.copy()
+			
+			# Add "Marketing Head(new)" role if not already in JSON roles
+			if role not in final_roles:
+				final_roles.append(role)
+			
+			# Check if Custom Role needs to be updated
+			roles_changed = set(existing_custom_roles) != set(final_roles)
+			
+			if roles_changed:
+				# Clear existing roles and rebuild from final_roles
+				custom_role_doc.set("roles", [])
+				for role_name in final_roles:
+					custom_role_doc.append("roles", {"role": role_name})
+				
+				custom_role_doc.save(ignore_permissions=True)
+				frappe.db.commit()
+				frappe.logger().info(
+					f"Synced roles for report {report_name} on update: {final_roles}"
+				)
+		else:
+			# No Custom Role exists - create one with all JSON roles + our role
+			final_roles = json_roles.copy()
+			
+			# Add our role if not already present
+			if role not in final_roles:
+				final_roles.append(role)
+			
+			# Create Custom Role with all roles
+			roles_list = [{"role": r} for r in final_roles]
+			custom_role_doc = frappe.get_doc({
+				"doctype": "Custom Role",
+				"report": report_name,
+				"roles": roles_list
+			})
+			custom_role_doc.insert(ignore_permissions=True)
+			frappe.db.commit()
+			frappe.logger().info(
+				f"Created Custom Role for report {report_name} on update with roles: {final_roles}"
+			)
+	except Exception as e:
+		frappe.logger().error(f"Error syncing report permission for {doc.name}: {str(e)}")
+
+
+@frappe.whitelist()
+def sync_all_report_permissions():
+	"""Standalone function to sync all report permissions from JSON files to Custom Role records.
+	This ensures that any roles added to Report JSON files are automatically included in Custom Role records.
+	
+	Can be called via:
+	- bench --site [site] console: exec(open('path/to/centre_assignment.py').read()); sync_all_report_permissions()
+	- Or via API: frappe.call('frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.sync_all_report_permissions')
+	"""
+	role = "Marketing Head(new)"
+	synced_count = 0
+	created_count = 0
+	error_count = 0
+	
+	# Get all reports excluding master reports
+	reports = frappe.get_all(
+		"Report",
+		filters={
+			"name": ["not like", "Master%"],
+			"disabled": 0
+		},
+		fields=["name"]
+	)
+	
+	for report in reports:
+		report_name = report.name
+		try:
+			# Get standard roles from the report JSON file
+			report_doc = frappe.get_doc("Report", report_name)
+			json_roles = [r.role for r in report_doc.roles]
+			
+			# Check if Custom Role exists for this report
+			custom_role_name = frappe.db.get_value(
+				"Custom Role",
+				{"report": report_name},
+				"name"
+			)
+			
+			if custom_role_name:
+				# Custom Role exists - sync roles from JSON
+				custom_role_doc = frappe.get_doc("Custom Role", custom_role_name)
+				existing_custom_roles = [r.role for r in custom_role_doc.roles]
+				
+				# Start with all roles from JSON (source of truth)
+				final_roles = json_roles.copy()
+				
+				# Add "Marketing Head(new)" role if not already in JSON roles
+				if role not in final_roles:
+					final_roles.append(role)
+				
+				# Check if Custom Role needs to be updated
+				roles_changed = set(existing_custom_roles) != set(final_roles)
+				
+				if roles_changed:
+					# Clear existing roles and rebuild from final_roles
+					custom_role_doc.set("roles", [])
+					for role_name in final_roles:
+						custom_role_doc.append("roles", {"role": role_name})
+					
+					custom_role_doc.save(ignore_permissions=True)
+					synced_count += 1
+			else:
+				# No Custom Role exists - create one with all JSON roles + our role
+				final_roles = json_roles.copy()
+				
+				# Add our role if not already present
+				if role not in final_roles:
+					final_roles.append(role)
+				
+				# Create Custom Role with all roles
+				roles_list = [{"role": r} for r in final_roles]
+				custom_role_doc = frappe.get_doc({
+					"doctype": "Custom Role",
+					"report": report_name,
+					"roles": roles_list
+				})
+				custom_role_doc.insert(ignore_permissions=True)
+				created_count += 1
+		except Exception as e:
+			error_count += 1
+			frappe.logger().error(f"Error syncing report permission for {report_name}: {str(e)}")
+	
+	# Commit all changes
+	frappe.db.commit()
+	
+	# Clear cache
+	frappe.clear_cache()
+	frappe.cache().delete_value("has_role:Report", user=frappe.session.user)
+	
+	return {
+		"status": "success",
+		"synced": synced_count,
+		"created": created_count,
+		"errors": error_count,
+		"total_reports": len(reports),
+		"message": f"Synced {synced_count} reports, created {created_count} new Custom Role records, {error_count} errors"
 	}
 
 
