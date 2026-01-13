@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from urllib.parse import quote
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import get_assigned_centres_for_user
 
 Filters = frappe._dict
 
@@ -165,6 +166,20 @@ def get_data(filters: Filters) -> list[dict]:
 	elif is_executive and not is_marketing_head:
 		executive = frappe.db.get_value('Executive', {'email': user}, ['name'], as_dict=1)
 		lead_filters["executive"] = executive.name
+		leads = frappe.get_all("Lead", fields=["*"], filters=lead_filters)
+	
+	# Apply center filtering for Marketing Head(new) role
+	elif "Marketing Head(new)" in roles:
+		assigned_centres = get_assigned_centres_for_user(user)
+		if assigned_centres:
+			if len(assigned_centres) == 1:
+				lead_filters["center"] = assigned_centres[0]
+			else:
+				lead_filters["center"] = ["in", assigned_centres]
+		else:
+			# No centres assigned, return empty list
+			leads = []
+			return []
 		leads = frappe.get_all("Lead", fields=["*"], filters=lead_filters)
 
 	else:

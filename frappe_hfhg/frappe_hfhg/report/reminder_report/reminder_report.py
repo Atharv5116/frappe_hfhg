@@ -6,6 +6,7 @@ from frappe import _
 from frappe.email.receive import add_days
 from frappe.utils import getdate
 from frappe.utils.data import today
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import apply_marketing_head_center_filter
 
 Filters = frappe._dict
 
@@ -369,6 +370,9 @@ def get_data(filters):
             query += " AND rm.executive IN (%(executive_name)s, %(executive_fullname)s)"
             params["executive_name"] = executive["name"]
             params["executive_fullname"] = executive["fullname"]
+    
+    # Apply center filtering for Marketing Head(new) role
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="rm")
 
     rows = frappe.db.sql(query, params, as_dict=True)
 

@@ -7,10 +7,10 @@
  "docstatus": 0,
  "doctype": "Report",
  "filters": [],
- "idx": 0,
+ "idx": 2,
  "is_standard": "Yes",
- "letterhead": null,
- "modified": "2025-06-25 11:07:53.515015",
+ "letter_head": null,
+ "modified": "2026-01-13 17:03:27.686572",
  "modified_by": "Administrator",
  "module": "Frappe Hfhg",
  "name": "Surgery Report",
@@ -28,6 +28,9 @@
   },
   {
    "role": "HOD"
+  },
+  {
+   "role": "Campaign"
   }
  ],
  "timeout": 0

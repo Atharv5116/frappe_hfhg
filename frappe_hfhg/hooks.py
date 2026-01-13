@@ -136,6 +136,9 @@ doc_events = {
     },
     "Lead": {
         "after_insert": ["frappe_hfhg.api.after_insert_lead_logs"],
+    },
+    "Report": {
+        "on_update": ["frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.sync_single_report_permissions"],
     }
 }
 
@@ -254,6 +257,7 @@ permission_query_conditions = {
 }
 
 after_install = "frappe_hfhg.install.after_install"
+after_migrate = "frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment.sync_all_report_permissions"
 app_include_css = "/assets/frappe_hfhg/css/custom.css"
 
 scheduler_events = {

@@ -232,6 +232,12 @@ def get_query_filters(filters):
 			if executive:
 					reminder_filters["executive"] = ["in", [executive.name, executive.fullname]]
 	
+	# Filter for Future Surgery users - show only their own reminders
+	if "Future Surgery" in roles and not is_marketing_head:
+		user_info = frappe.get_doc("User", user)
+		user_fullname = user_info.full_name or user
+		reminder_filters["executive"] = user_fullname
+	
 	return reminder_filters
 
 
@@ -363,6 +369,13 @@ def get_data(filters):
             query += " AND rm.executive IN (%(executive_name)s, %(executive_fullname)s)"
             params["executive_name"] = executive["name"]
             params["executive_fullname"] = executive["fullname"]
+    
+    # Filter for Future Surgery users - show only their own reminders
+    if "Future Surgery" in roles and not is_marketing_head:
+        user_info = frappe.get_doc("User", user)
+        user_fullname = user_info.full_name or user
+        query += " AND rm.executive = %(future_surgery_user_fullname)s"
+        params["future_surgery_user_fullname"] = user_fullname
 
     rows = frappe.db.sql(query, params, as_dict=True)
 

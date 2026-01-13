@@ -5,6 +5,7 @@ import datetime
 import frappe
 from frappe import _
 from urllib.parse import quote
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import filter_data_by_assigned_centres
 
 Filters = frappe._dict
 
@@ -309,6 +310,9 @@ def get_data(filters) -> list[dict]:
 	elif is_executive and not is_marketing_head:
 		executive = frappe.db.get_value('Executive', {'email': user}, ['name'], as_dict=1)
 		bookings = list(filter(lambda x: x.get("executive") == executive.name, bookings))
+	
+	# Apply center filtering for Marketing Head(new) role
+	bookings = filter_data_by_assigned_centres(bookings, center_field="center")
 			
 	for surgery in bookings:
 		payment_mode = ""
