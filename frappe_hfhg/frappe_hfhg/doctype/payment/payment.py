@@ -34,18 +34,13 @@ class Payment(Document):
 				else:
 					if self.payment_type == "Surgery":
 						surgery = frappe.get_doc("Surgery", self.patient)
-
-						if paid_amount >= 1 and paid_amount < surgery.pending_amount:
-							surgery.pending_amount = surgery.pending_amount - paid_amount
-							surgery.status = "Partially Paid"
-							surgery.surgery_transaction_date = self.transaction_date
-						elif paid_amount == surgery.pending_amount:
-							surgery.pending_amount = 0
-							surgery.status = "Paid"
-							surgery.surgery_transaction_date = self.transaction_date
-						elif paid_amount < 1:
+						
+						# Validations only - no updates here
+						if paid_amount < 1:
 							frappe.throw(_("Paid amount should be greater than 0."))
-						surgery.save(ignore_permissions=True)
+						if paid_amount > surgery.pending_amount:
+							frappe.throw(_("Paid amount should not be greater than pending amount."))
+						# Note: Surgery update moved to after_insert to ensure payment is actually saved
 					elif self.payment_type == "Consultation":
 						consultation = frappe.get_doc("Consultation", self.patient)
 						consultation.payment_status = "Paid"
@@ -93,53 +88,91 @@ class Payment(Document):
 					surgery.save(ignore_permissions=True)
 
 	def after_insert(self):
-		"""Update Costing only after Payment is successfully saved"""
-		if self.type == "Payment" and self.payment_type == "Costing":
-			paid_amount = 0
-			if self.with_gst_check:
-				paid_amount = self.without_gst_amount + self.with_gst_amount
-			else:
-				paid_amount = self.without_gst_amount
+		"""Update Costing and Surgery only after Payment is successfully saved"""
+		if self.type == "Payment":
+			if self.payment_type == "Costing":
+				paid_amount = 0
+				if self.with_gst_check:
+					paid_amount = self.without_gst_amount + self.with_gst_amount
+				else:
+					paid_amount = self.without_gst_amount
 
-			booking = frappe.get_doc("Costing", self.patient)
-			booking.status = "Booking"
-			booking.amount_paid = paid_amount
-			booking.pending_amount = self.total_amount - paid_amount
-			booking.book_date = self.creation
-			booking.booking_transaction_date = self.transaction_date
-			booking.save(ignore_permissions=True)
-			surgery_exists = frappe.db.exists(
-				"Surgery", {"name": self.patient}
-			)
-			if surgery_exists:
+				booking = frappe.get_doc("Costing", self.patient)
+				booking.status = "Booking"
+				booking.amount_paid = paid_amount
+				booking.pending_amount = self.total_amount - paid_amount
+				booking.book_date = self.creation
+				booking.booking_transaction_date = self.transaction_date
+				booking.save(ignore_permissions=True)
+				surgery_exists = frappe.db.exists(
+					"Surgery", {"name": self.patient}
+				)
+				if surgery_exists:
+					surgery = frappe.get_doc("Surgery", self.patient)
+					surgery.amount_paid = paid_amount
+					surgery.pending_amount = surgery.total_amount - paid_amount
+					surgery.save(ignore_permissions=True)
+			elif self.payment_type == "Surgery":
+				paid_amount = 0
+				if self.with_gst_check:
+					paid_amount = math.floor(self.without_gst_amount + self.with_gst_amount)
+				else:
+					paid_amount = math.floor(self.without_gst_amount)
+				
 				surgery = frappe.get_doc("Surgery", self.patient)
-				surgery.amount_paid = paid_amount
-				surgery.pending_amount = surgery.total_amount - paid_amount
+				
+				if paid_amount >= 1 and paid_amount < surgery.pending_amount:
+					surgery.pending_amount = surgery.pending_amount - paid_amount
+					surgery.status = "Partially Paid"
+					surgery.surgery_transaction_date = self.transaction_date
+				elif paid_amount == surgery.pending_amount:
+					surgery.pending_amount = 0
+					surgery.status = "Paid"
+					surgery.surgery_transaction_date = self.transaction_date
 				surgery.save(ignore_permissions=True)
 
 	def on_update(self):
-		"""Update Costing when an existing Payment is edited"""
-		if self.type == "Payment" and self.payment_type == "Costing":
-			paid_amount = 0
-			if self.with_gst_check:
-				paid_amount = self.without_gst_amount + self.with_gst_amount
-			else:
-				paid_amount = self.without_gst_amount
+		"""Update Costing and Surgery when an existing Payment is edited"""
+		if self.type == "Payment":
+			if self.payment_type == "Costing":
+				paid_amount = 0
+				if self.with_gst_check:
+					paid_amount = self.without_gst_amount + self.with_gst_amount
+				else:
+					paid_amount = self.without_gst_amount
 
-			booking = frappe.get_doc("Costing", self.patient)
-			booking.status = "Booking"
-			booking.amount_paid = paid_amount
-			booking.pending_amount = self.total_amount - paid_amount
-			booking.book_date = self.creation
-			booking.booking_transaction_date = self.transaction_date
-			booking.save(ignore_permissions=True)
-			surgery_exists = frappe.db.exists(
-				"Surgery", {"name": self.patient}
-			)
-			if surgery_exists:
+				booking = frappe.get_doc("Costing", self.patient)
+				booking.status = "Booking"
+				booking.amount_paid = paid_amount
+				booking.pending_amount = self.total_amount - paid_amount
+				booking.book_date = self.creation
+				booking.booking_transaction_date = self.transaction_date
+				booking.save(ignore_permissions=True)
+				surgery_exists = frappe.db.exists(
+					"Surgery", {"name": self.patient}
+				)
+				if surgery_exists:
+					surgery = frappe.get_doc("Surgery", self.patient)
+					surgery.amount_paid = paid_amount
+					surgery.pending_amount = surgery.total_amount - paid_amount
+					surgery.save(ignore_permissions=True)
+			elif self.payment_type == "Surgery":
+				paid_amount = 0
+				if self.with_gst_check:
+					paid_amount = math.floor(self.without_gst_amount + self.with_gst_amount)
+				else:
+					paid_amount = math.floor(self.without_gst_amount)
+				
 				surgery = frappe.get_doc("Surgery", self.patient)
-				surgery.amount_paid = paid_amount
-				surgery.pending_amount = surgery.total_amount - paid_amount
+				
+				if paid_amount >= 1 and paid_amount < surgery.pending_amount:
+					surgery.pending_amount = surgery.pending_amount - paid_amount
+					surgery.status = "Partially Paid"
+					surgery.surgery_transaction_date = self.transaction_date
+				elif paid_amount == surgery.pending_amount:
+					surgery.pending_amount = 0
+					surgery.status = "Paid"
+					surgery.surgery_transaction_date = self.transaction_date
 				surgery.save(ignore_permissions=True)
 
 	def on_trash(self):
