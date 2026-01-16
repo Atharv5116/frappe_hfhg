@@ -7,17 +7,19 @@
  "engine": "InnoDB",
  "field_order": [
   "followup",
-  "days"
+  "days",
+  "label"
  ],
  "fields": [
   {
    "fieldname": "followup",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Followup",
+   "in_list_view": 0,
+   "label": "Followup #",
    "non_negative": 1,
    "read_only": 1,
-   "reqd": 1
+   "reqd": 1,
+   "hidden": 1
   },
   {
    "fieldname": "days",
@@ -25,6 +27,13 @@
    "in_list_view": 1,
    "label": "Days",
    "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label",
    "reqd": 1
   }
  ],

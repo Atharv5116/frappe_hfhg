@@ -50,15 +50,34 @@ class DoctorFollowup(Document):
 		pass
 
 	def get_followup_label(self, sequence_number):
-		"""Get the label for a followup based on its sequence number"""
-		labels = {
-			1: "Bandage Removal (1st post-transplant call)",
-			2: "Head Wash Follow-Up Call",
-			3: "Post Head Wash Feedback Call + Scalp Pictures + Medication Guidance",
-			4: "Minoxidil Application Guidance Call",
-			5: "Baby Hair & Shedding Phase Review + 1st PRP Session"
-		}
-		return labels.get(sequence_number, "")
+		"""Get the label for a followup based on its sequence number from Followup Settings"""
+		try:
+			followup_settings = frappe.get_single("Followup Settings")
+			if followup_settings.followup_intervals and len(followup_settings.followup_intervals) >= sequence_number:
+				# Get the label from the followup_intervals table
+				# sequence_number is 1-indexed, so we need to access index (sequence_number - 1)
+				# Try to find by index first (assuming table is in order)
+				if sequence_number <= len(followup_settings.followup_intervals):
+					interval = followup_settings.followup_intervals[sequence_number - 1]
+					if interval.label:
+						return interval.label
+				# Fallback: try to find by followup number if it's stored as a number
+				for interval in followup_settings.followup_intervals:
+					# Extract number from "Followup X" format or use direct number
+					followup_num = None
+					if isinstance(interval.followup, (int, float)):
+						followup_num = int(interval.followup)
+					elif isinstance(interval.followup, str) and "Followup" in interval.followup:
+						try:
+							followup_num = int(interval.followup.replace("Followup", "").strip())
+						except:
+							pass
+					if followup_num == sequence_number and interval.label:
+						return interval.label
+		except Exception as e:
+			# Fallback to empty string if Followup Settings is not configured
+			frappe.log_error(f"Error getting followup label: {str(e)}", "DoctorFollowup.get_followup_label")
+		return ""
 
 	def on_update(self):
 		if self.allocated_to:
