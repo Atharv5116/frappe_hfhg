@@ -24,10 +24,146 @@ frappe.ui.form.on("Doctor Followup", {
 
                 })  
             });
+            
+            // Add button to create new followup linked to same Surgery
+            if (frm.doc.reference_type === "Surgery" && frm.doc.reference_name) {
+                frm.add_custom_button("Create New Followup", function () {
+                    createNewFollowup(frm);
+                });
+            }
+            
+            // Make title field clickable to navigate to Surgery
+            if (frm.doc.reference_type === "Surgery" && frm.doc.reference_name && frm.fields_dict.title) {
+                makeTitleClickable(frm);
+            }
           }
 
 	},
 });
+
+function makeTitleClickable(frm) {
+    // Wait for the field to be rendered
+    setTimeout(function() {
+        const titleField = frm.fields_dict.title;
+        if (titleField && titleField.$wrapper) {
+            const $wrapper = titleField.$wrapper;
+            const $input = titleField.$input;
+            
+            // Remove any existing link icons
+            $wrapper.find('.title-link-icon').remove();
+            
+            // Find the control area (where the input is)
+            const $control = $wrapper.find('.control-input-wrapper, .control-input, .frappe-control');
+            let $targetContainer = $control.length ? $control : $wrapper;
+            
+            // Add a clickable link icon next to the title field
+            const $linkIcon = $('<span class="title-link-icon" style="margin-left: 8px; cursor: pointer; color: #5e64ff; display: inline-flex; align-items: center; vertical-align: middle;" title="' + __('Click to open Surgery') + '"><i class="fa fa-external-link"></i></span>');
+            
+            // Insert icon after the input or in the control area
+            if ($input && $input.length) {
+                $input.after($linkIcon);
+            } else if ($control.length) {
+                $control.append($linkIcon);
+            } else {
+                $wrapper.append($linkIcon);
+            }
+            
+            // Click handler for the icon
+            $linkIcon.on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (frm.doc.reference_type === "Surgery" && frm.doc.reference_name) {
+                    frappe.set_route("Form", "Surgery", frm.doc.reference_name);
+                }
+            });
+            
+            // Also make the title label/value clickable (single click when not editing)
+            $wrapper.on('click.title-link', function(e) {
+                // Don't interfere if clicking the input to edit
+                if ($(e.target).is('input[type="text"]') || $(e.target).closest('input[type="text"]').length) {
+                    return;
+                }
+                
+                // If clicking on label or value area, navigate to Surgery
+                if ($(e.target).is('label') || $(e.target).hasClass('control-value') || 
+                    $(e.target).hasClass('control-label') || $(e.target).closest('label').length) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (frm.doc.reference_type === "Surgery" && frm.doc.reference_name) {
+                        frappe.set_route("Form", "Surgery", frm.doc.reference_name);
+                    }
+                }
+            });
+            
+            // Add pointer cursor to label to indicate it's clickable
+            $wrapper.find('label').css('cursor', 'pointer');
+        }
+    }, 300);
+}
+
+function createNewFollowup(frm) {
+    // Check if reference_type and reference_name exist
+    if (!frm.doc.reference_type || !frm.doc.reference_name) {
+        frappe.msgprint({
+            title: __("Error"),
+            message: __("Cannot create new followup: Reference information is missing."),
+            indicator: "red"
+        });
+        return;
+    }
+    
+    // Count existing followups to determine the next sequence number
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Doctor Followup",
+            filters: {
+                reference_type: frm.doc.reference_type,
+                reference_name: frm.doc.reference_name
+            },
+            fields: ["name"],
+            order_by: "creation asc"
+        },
+        callback: function(response) {
+            const existingCount = response.message ? response.message.length : 0;
+            const nextSequence = existingCount + 1;
+            
+            // Prepare route options with pre-filled data
+            const routeOptions = {
+                reference_type: frm.doc.reference_type,
+                reference_name: frm.doc.reference_name,
+                status: "Open",
+                center: frm.doc.center || "",
+                surgery_date: frm.doc.surgery_date || "",
+                technique: frm.doc.technique || "",
+                grafts: frm.doc.grafts || "",
+                patient_name: frm.doc.patient_name || "",
+                patient_contact_number: frm.doc.patient_contact_number || "",
+                allocated_to: frm.doc.allocated_to || ""
+            };
+            
+            // Create title based on reference name and sequence
+            if (frm.doc.reference_name) {
+                routeOptions.title = frm.doc.reference_name + " - " + nextSequence;
+            }
+            
+            // Open new Doctor Followup form with pre-filled data
+            frappe.new_doc("Doctor Followup", routeOptions).then(() => {
+                frappe.show_alert({
+                    message: __("New followup created and linked to the same Surgery"),
+                    indicator: "green"
+                });
+            });
+        },
+        error: function(err) {
+            frappe.msgprint({
+                title: __("Error"),
+                message: __("Failed to create new followup: ") + err.message,
+                indicator: "red"
+            });
+        }
+    });
+}
 
 // Copy the exact implementation from Lead doctype
 function showConversationsModal(leadDoc) {
