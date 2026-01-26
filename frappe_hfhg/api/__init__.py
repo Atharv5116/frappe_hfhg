@@ -2577,12 +2577,20 @@ def update_payment_confirmation_by_surgery(surgery_name: str, status: str):
         return {"success": False, "msg": f"No Payment found for patient {patient}"}
 
     # update the latest Payment
-    doc = frappe.get_doc("Payment", payment[0].name)
-    doc.payment_confirmation = status
-    doc.save(ignore_permissions=True)
-    frappe.db.commit()
+    try:
+        doc = frappe.get_doc("Payment", payment[0].name)
+        doc.payment_confirmation = status
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
 
-    return {"success": True, "msg": f"Updated Payment {doc.name} for patient {patient}"}
+        return {"success": True, "msg": f"Updated Payment {doc.name} for patient {patient}"}
+    except frappe.ValidationError as e:
+        frappe.db.rollback()
+        return {"success": False, "msg": str(e)}
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating payment confirmation: {str(e)}", "Payment Confirmation Update Error")
+        return {"success": False, "msg": f"Server error while updating payment confirmation: {str(e)}"}
 
 
 @frappe.whitelist()

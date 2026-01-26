@@ -33,13 +33,33 @@ class Payment(Document):
 					frappe.throw(_("Total paid amount should be equal to total amount."))
 				else:
 					if self.payment_type == "Surgery":
-						surgery = frappe.get_doc("Surgery", self.patient)
+						# Check if only payment_confirmation is being updated
+						# If so, skip amount validations as the payment was already validated when created
+						# Check if any amount-related fields have changed
+						amount_fields_changed = (
+							self.has_value_changed('without_gst_amount') or
+							self.has_value_changed('with_gst_amount') or
+							self.has_value_changed('with_gst_check') or
+							self.has_value_changed('total_amount') or
+							self.has_value_changed('total_amount_received')
+						)
 						
-						# Validations only - no updates here
-						if paid_amount < 1:
-							frappe.throw(_("Paid amount should be greater than 0."))
-						if paid_amount > surgery.pending_amount:
-							frappe.throw(_("Paid amount should not be greater than pending amount."))
+						# Only payment_confirmation is being updated (and no amount fields changed)
+						only_payment_confirmation_update = (
+							self.has_value_changed('payment_confirmation') and 
+							not amount_fields_changed
+						)
+						
+						# Skip amount validation if only payment_confirmation is being updated
+						# Otherwise, validate amounts (for new documents or when amounts are changed)
+						if not only_payment_confirmation_update:
+							surgery = frappe.get_doc("Surgery", self.patient)
+							
+							# Validations only - no updates here
+							if paid_amount < 1:
+								frappe.throw(_("Paid amount should be greater than 0."))
+							if paid_amount > surgery.pending_amount:
+								frappe.throw(_("Paid amount should not be greater than pending amount."))
 						# Note: Surgery update moved to after_insert to ensure payment is actually saved
 					elif self.payment_type == "Consultation":
 						consultation = frappe.get_doc("Consultation", self.patient)
