@@ -64,9 +64,17 @@
   
   // Function to extract plain text from HTML
   function extractText(html) {
+    if (!html) {
+      return '';
+    }
     const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
+    const normalizedHtml = String(html)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n');
+    div.innerHTML = normalizedHtml;
+    const text = div.textContent || div.innerText || '';
+    return text.replace(/\r\n/g, '\n');
   }
   
   // Function to check if we're on home page
