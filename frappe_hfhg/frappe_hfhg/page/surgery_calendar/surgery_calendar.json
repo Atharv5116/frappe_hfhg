@@ -10,7 +10,14 @@
  "name": "surgery-calendar",
  "owner": "Administrator",
  "page_name": "surgery-calendar",
- "roles": [],
+ "roles": [
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "HOD"
+  }
+ ],
  "script": null,
  "standard": "Yes",
  "style": null,

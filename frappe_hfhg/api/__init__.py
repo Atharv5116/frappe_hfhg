@@ -26,6 +26,11 @@ month_later = (datetime.today() + timedelta(days=30)).strftime('%Y-%m-%d')
 
 full_access_roles = ["Lead Distributor", "HOD", "Marketing Head", "Accountant", "Lead checker", "Surbhi-backend"]
 
+def _ensure_surgery_calendar_access():
+    roles = frappe.get_roles()
+    if "Administrator" not in roles and "HOD" not in roles:
+        frappe.throw(_("You don't have permission to access the Surgery Calendar."), frappe.PermissionError)
+
 @frappe.whitelist()
 def get_total_leads():
     user = frappe.session.user
@@ -1092,6 +1097,7 @@ def get_calendar_data(year, month, center = "ALL" , types  = "ALL" ):
 
 @frappe.whitelist()   
 def get_centers():
+    _ensure_surgery_calendar_access()
     user = frappe.session.user  
     centers = frappe.db.get_all('Center' , fields="name",pluck="name")
     is_receptionist = frappe.db.exists("Receptionist", {'email': user})
@@ -1107,6 +1113,7 @@ def get_centers():
 
 @frappe.whitelist()
 def get_surgery_data(year, month, center = "ALL"):
+    _ensure_surgery_calendar_access()
     today = frappe.utils.today()
     start_date = datetime(year= int(year), month = int(month), day=1)
     start_date = datetime.strftime(start_date , "%Y-%m-%d")
