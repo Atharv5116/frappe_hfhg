@@ -13,9 +13,6 @@
  "roles": [
   {
    "role": "Administrator"
-  },
-  {
-   "role": "HOD"
   }
  ],
  "script": null,
