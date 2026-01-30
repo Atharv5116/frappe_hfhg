@@ -1424,7 +1424,7 @@ def create_call_logs(call_logs):
 
     for idx, log in enumerate(call_logs):
         try:
-            call_log_doc = frappe.get_doc({
+            doc_dict = {
                 "doctype": "Call Logs",
                 "datetime": parse_date(log.get("dateTime")),
                 "duration": log.get("duration"),
@@ -1432,7 +1432,15 @@ def create_call_logs(call_logs):
                 "timestamp": log.get("timestamp"),
                 "status": log.get("type").capitalize(),
                 "device_id": log.get("rawType"),
-            })
+            }
+            # Optional agent fields (agentName, agentPhoneNumber, agentId)
+            if log.get("agentName") is not None:
+                doc_dict["agent_name"] = log.get("agentName")
+            if log.get("agentPhoneNumber") is not None:
+                doc_dict["agent_phone_number"] = log.get("agentPhoneNumber")
+            if log.get("agentId") is not None:
+                doc_dict["agent_id"] = log.get("agentId")
+            call_log_doc = frappe.get_doc(doc_dict)
 
             call_log_doc.insert(ignore_permissions=True)
             inserted_logs += 1
@@ -2577,20 +2585,12 @@ def update_payment_confirmation_by_surgery(surgery_name: str, status: str):
         return {"success": False, "msg": f"No Payment found for patient {patient}"}
 
     # update the latest Payment
-    try:
-        doc = frappe.get_doc("Payment", payment[0].name)
-        doc.payment_confirmation = status
-        doc.save(ignore_permissions=True)
-        frappe.db.commit()
+    doc = frappe.get_doc("Payment", payment[0].name)
+    doc.payment_confirmation = status
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
 
-        return {"success": True, "msg": f"Updated Payment {doc.name} for patient {patient}"}
-    except frappe.ValidationError as e:
-        frappe.db.rollback()
-        return {"success": False, "msg": str(e)}
-    except Exception as e:
-        frappe.db.rollback()
-        frappe.log_error(f"Error updating payment confirmation: {str(e)}", "Payment Confirmation Update Error")
-        return {"success": False, "msg": f"Server error while updating payment confirmation: {str(e)}"}
+    return {"success": True, "msg": f"Updated Payment {doc.name} for patient {patient}"}
 
 
 @frappe.whitelist()

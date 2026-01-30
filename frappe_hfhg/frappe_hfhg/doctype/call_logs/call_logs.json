@@ -10,7 +10,11 @@
   "status",
   "column_break_npnr",
   "datetime",
-  "duration"
+  "duration",
+  "column_break_agent",
+  "agent_name",
+  "agent_phone_number",
+  "agent_id"
  ],
  "fields": [
   {
@@ -53,6 +57,26 @@
    "fieldtype": "Int",
    "label": "Duration",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_agent",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Agent Name"
+  },
+  {
+   "fieldname": "agent_phone_number",
+   "fieldtype": "Data",
+   "label": "Agent Phone Number"
+  },
+  {
+   "fieldname": "agent_id",
+   "fieldtype": "Data",
+   "label": "Agent Id"
   }
  ],
  "index_web_pages_for_search": 1,
