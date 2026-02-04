@@ -17,7 +17,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Method",
-   "options": "Cash\nCard\nCheque\nBajaj Finance\nNet Banking",
+   "options": "Cash\nCard\nCheque\nBajaj Finance\nNet Banking\nEMI",
    "reqd": 1
   },
   {
