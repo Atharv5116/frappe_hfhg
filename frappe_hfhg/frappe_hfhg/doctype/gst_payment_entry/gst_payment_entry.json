@@ -14,10 +14,10 @@
  "fields": [
   {
    "fieldname": "method",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Method",
-   "options": "Cash\nCard\nCheque\nBajaj Finance\nNet Banking\nEMI",
+   "options": "Payment method",
    "reqd": 1
   },
   {
