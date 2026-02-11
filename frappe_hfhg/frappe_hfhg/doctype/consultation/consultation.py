@@ -126,6 +126,9 @@ class Consultation(Document):
 			elif self.status == "Not Visited" and lead.status != "CS Followup":
 				lead.status = "CS Followup"
 				lead.save(ignore_permissions=True)
+			elif self.status == "Medication" and lead.status != "Medication":
+				lead.status = "Medication"
+				lead.save(ignore_permissions=True)
 
 
 @frappe.whitelist()

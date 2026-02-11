@@ -69,7 +69,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Scheduled\nBooked\nSpot Booking\nNon Booked\nMedi-PRP\nNot Visited\nRescheduled",
+   "options": "Scheduled\nBooked\nSpot Booking\nNon Booked\nMedi-PRP\nNot Visited\nRescheduled\nMedication",
    "permlevel": 1,
    "reqd": 1
   },
