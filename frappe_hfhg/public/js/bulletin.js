@@ -62,11 +62,40 @@
     });
   }
   
-  // Function to extract plain text from HTML
+  // Function to extract plain text from HTML while preserving line breaks
   function extractText(html) {
+    if (!html) return '';
+    
+    // If it's already plain text (no HTML tags), return as-is
+    if (!/<[^>]+>/.test(html)) {
+      return html;
+    }
+    
+    // Replace common HTML line break elements with newlines BEFORE parsing
+    // This preserves the line breaks in the text content
+    let processedHtml = html
+      .replace(/<br\s*\/?>/gi, '\n')           // <br> and <br/> -> newline
+      .replace(/<\/p>/gi, '\n')                 // </p> -> newline
+      .replace(/<\/div>/gi, '\n')              // </div> -> newline
+      .replace(/<li[^>]*>/gi, '\n• ')          // <li> -> newline + bullet
+      .replace(/<\/li>/gi, '')                 // Remove </li>
+      .replace(/<p[^>]*>/gi, '')               // Remove opening <p>
+      .replace(/<div[^>]*>/gi, '');            // Remove opening <div>
+    
+    // Now parse the HTML to extract text (which will include our newlines)
     const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
+    div.innerHTML = processedHtml;
+    
+    // Get text content which now includes newlines
+    let text = div.textContent || div.innerText || '';
+    
+    // Clean up: normalize multiple consecutive newlines (more than 2) to double newline
+    text = text.replace(/\n{3,}/g, '\n\n');
+    
+    // Remove leading/trailing whitespace but preserve internal newlines
+    text = text.replace(/^[\s\n]+|[\s\n]+$/g, '');
+    
+    return text;
   }
   
   // Function to check if we're on home page
@@ -160,7 +189,11 @@
     bulletins.forEach(function(bulletinItem) {
       const text = extractText(bulletinItem.message);
       if (text && text.trim()) {
-        bulletinTexts.push(text.trim());
+        // Trim only leading/trailing whitespace, preserve internal newlines
+        const trimmedText = text.replace(/^\s+|\s+$/g, '');
+        if (trimmedText) {
+          bulletinTexts.push(trimmedText);
+        }
       }
     });
     
