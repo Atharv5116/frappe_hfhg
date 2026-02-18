@@ -202,7 +202,7 @@ frappe.ui.form.on("Surgery", {
 
             frm.refresh_field("postpone_surgery");
 
-            // ✅ Logic to set surgery_date and surgery_status
+            // ✅ Logic to set surgery_date, surgery_status
             if (new_data && new_data.length > 0) {
               // Get the latest postpone_date
               let latest_postpone_date =
@@ -210,7 +210,7 @@ frappe.ui.form.on("Surgery", {
 
               if (latest_postpone_date) {
                 frm.set_value("surgery_date", latest_postpone_date);
-                frm.set_value("surgery_status", "Booked");
+                frm.set_value("surgery_status", "Postponed");
               } else {
                 frm.set_value("surgery_date", null);
                 frm.set_value("surgery_status", "Hold");

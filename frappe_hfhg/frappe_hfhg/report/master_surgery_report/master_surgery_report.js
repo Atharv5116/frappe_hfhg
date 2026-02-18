@@ -193,7 +193,7 @@ formatter: function(value, row, column, data, default_formatter) {
 		fieldname: "status",
 		label: __("Surgery Status"),
 		fieldtype: "Select",
-		options: ["", "Booked", "Partially Completed", "Completed", "Cancelled"],
+		options: ["", "Booked", "Partially Completed", "Completed", "Cancelled", "Hold", "Postponed"],
 	  },
 	  {
 		fieldname: "lead_status",
