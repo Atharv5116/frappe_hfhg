@@ -16,6 +16,18 @@ class CentreAssignment(Document):
 		centres_list = [c.center for c in self.centres]
 		if len(centres_list) != len(set(centres_list)):
 			frappe.throw(_("Duplicate centres are not allowed."))
+		
+		# Validate can_transfer_lead checkbox - only for Marketing Head(new) role
+		if self.can_transfer_lead:
+			if not self.user:
+				frappe.throw(_("User must be set before enabling 'Can transfer lead'."))
+			
+			# Check if user has Marketing Head(new) role
+			user_doc = frappe.get_doc("User", self.user)
+			user_roles = [r.role for r in user_doc.roles]
+			
+			if "Marketing Head(new)" not in user_roles:
+				frappe.throw(_("'Can transfer lead' can only be enabled for users with 'Marketing Head(new)' role."))
 	
 	def on_update(self):
 		"""Grant permissions when centres are assigned"""

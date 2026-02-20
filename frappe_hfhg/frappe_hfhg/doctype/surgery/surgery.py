@@ -186,6 +186,8 @@ class Surgery(Document):
 				lead.status = "HT Cancel"
 			elif self.surgery_status == "Booked" and lead.status != "Date Given":
 				lead.status = "Date Given"
+			elif self.surgery_status == "Postponed" and lead.status != "Date Given":
+				lead.status = "Date Given"	
 			elif self.surgery_status == "Partially Completed" or self.surgery_status == "Completed" :
 				lead.status = "HT Done"
 			lead.save(ignore_permissions=True)

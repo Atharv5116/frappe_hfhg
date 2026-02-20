@@ -158,6 +158,9 @@ class Lead(Document):
 		old_doc = self.get_doc_before_save()
 
 		if old_doc and old_doc.executive != self.executive:
+			# Validate if user has permission to change executive
+			self.validate_executive_change_permission()
+			
 			log_executive_change(self)
 			self.previous_executive = old_doc.executive
 			self.executive_changed_date = today()
@@ -276,6 +279,40 @@ class Lead(Document):
 			# If there's any error, allow closing for safety
 			frappe.log_error(f"Error checking user status for reminder permission: {str(e)}")
 			return True
+
+	def validate_executive_change_permission(self):
+		"""Validate if the current user has permission to change the executive field.
+		Only users with Marketing Head(new) role who have 'can_transfer_lead' checked in their Centre Assignment can change executive."""
+		current_user = frappe.session.user
+		user_roles = frappe.get_roles(current_user)
+		
+		# Check if user has Marketing Head(new) role
+		if "Marketing Head(new)" not in user_roles:
+			# User doesn't have Marketing Head(new) role, allow change (existing behavior for other roles)
+			return
+		
+		# User has Marketing Head(new) role, check Centre Assignment
+		# Since Centre Assignment autoname is format:{user}, the document name is the user name
+		# Use frappe.db.get_value to avoid permission issues
+		can_transfer_lead = frappe.db.get_value("Centre Assignment", current_user, "can_transfer_lead")
+		
+		# If not found by name (user name), try to find by user field
+		if can_transfer_lead is None:
+			centre_assignment_name = frappe.db.get_value("Centre Assignment", {"user": current_user}, "name")
+			if not centre_assignment_name:
+				# No Centre Assignment found, deny permission
+				frappe.throw(
+					_("You do not have permission to change the executive. Please ensure your Centre Assignment has 'Can transfer lead' enabled."),
+					title=_("Permission Denied")
+				)
+			can_transfer_lead = frappe.db.get_value("Centre Assignment", centre_assignment_name, "can_transfer_lead")
+		
+		# Check if can_transfer_lead is checked
+		if not can_transfer_lead:
+			frappe.throw(
+				_("You do not have permission to change the executive. 'Can transfer lead' is not enabled in your Centre Assignment."),
+				title=_("Permission Denied")
+			)
 
 	def before_insert(self):
 		auto_link_ad_name_from_source(self)
