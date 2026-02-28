@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from urllib.parse import quote
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import apply_marketing_head_center_filter
 
 Filters = frappe._dict
 
@@ -52,19 +53,22 @@ def get_columns() -> list[dict]:
 
 def get_data(filters: Filters) -> list[dict]:
     rows = []
-    
-    # Fetch the relevant data based on filters
-    query_filters = {
-        "date": ["between", [filters.from_date, filters.to_date]]
-    }
-    if filters.lead:
-        query_filters["lead"] = filters.lead
 
-    lead_status_data = frappe.get_all(
-        "Lead Status Track", 
-        filters=query_filters, 
-        fields=["lead", "old_status", "new_status", "date", "user"]
-    )
+    query = """
+        SELECT lst.lead, lst.old_status, lst.new_status, lst.date, lst.user
+        FROM `tabLead Status Track` lst
+        LEFT JOIN `tabLead` l ON l.name = lst.lead
+        WHERE lst.date BETWEEN %(from_date)s AND %(to_date)s
+    """
+    params = {"from_date": filters.from_date, "to_date": filters.to_date}
+    if filters.get("lead"):
+        query += " AND lst.lead = %(lead)s"
+        params["lead"] = filters.lead
+
+    # Marketing Head(new) only: filter by lead's center
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+
+    lead_status_data = frappe.db.sql(query, params, as_dict=True)
 
 
     

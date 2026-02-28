@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from urllib.parse import quote
 import json
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import apply_marketing_head_center_filter
 
 Filters = frappe._dict
 
@@ -231,7 +232,10 @@ def get_data(filters: Filters) -> list[dict]:
 	if filters.get("active_inactive_status"):
 		query += " AND dl.active_inactive_status = %(active_inactive_status)s"
 		params["active_inactive_status"] = filters["active_inactive_status"]
-	
+
+	# Marketing Head(new) only: filter by duplicate lead's center
+	query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="dl")
+
 	leads = frappe.db.sql(query, params, as_dict=True)
 
 	for lead in leads:

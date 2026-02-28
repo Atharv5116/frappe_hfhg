@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils.data import today
 from datetime import datetime, date
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import get_assigned_centres_for_user
 
 Filters = frappe._dict
 
@@ -109,9 +110,23 @@ def get_data(filters: Filters) -> list[dict]:
 		receptionist = frappe.db.get_value('Receptionist', {'email': user}, ['name','email'], as_dict=1)
 		center = frappe.db.get_value('Center', {'clinic_manager': receptionist.email}, ['name'], as_dict=1)
 		executives = frappe.get_all("Executive", fields=["*"], filters={"email": user})
-	
-	if is_executive and not is_marketing_head:
+
+	elif is_executive and not is_marketing_head:
 		executives = frappe.get_all("Executive", fields=["*"], filters={"email": user})
+
+	elif "Marketing Head(new)" in roles:
+		# Marketing Head(new) only: show executives with leads in assigned centres
+		assigned_centres = get_assigned_centres_for_user(user)
+		if not assigned_centres:
+			return []
+		executive_names = frappe.db.sql("""
+			SELECT DISTINCT executive FROM `tabLead`
+			WHERE center IN %(centres)s AND executive IS NOT NULL AND executive != ''
+		""", {"centres": assigned_centres}, as_dict=True)
+		executive_names = [e.executive for e in executive_names]
+		if not executive_names:
+			return []
+		executives = frappe.get_all("Executive", fields=["*"], filters={"name": ["in", executive_names]})
 
 	for executive in executives:
 		leads = frappe.get_all(
