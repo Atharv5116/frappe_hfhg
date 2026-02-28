@@ -5,7 +5,10 @@ import datetime
 import frappe
 from frappe import _
 from urllib.parse import quote
-from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import filter_data_by_assigned_centres
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import (
+	apply_marketing_head_center_filter,
+	filter_data_by_assigned_centres,
+)
 
 Filters = frappe._dict
 
@@ -265,9 +268,12 @@ def get_data(filters) -> list[dict]:
 
 	if filters.get("cs_status"):
 		query += " AND latest_consultation.status = %(cs_status)s"
-		params["cs_status"] = filters["cs_status"]  
-		
-	bookings = frappe.db.sql(query,params, as_dict=True)
+		params["cs_status"] = filters["cs_status"]
+
+	# Apply center filter for Marketing Head(new) - only affects that role
+	query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="c")
+
+	bookings = frappe.db.sql(query, params, as_dict=True)
 	# bookings = frappe.get_all("Costing", fields=["*"], filters={
 	# 	"booking_date": ["between", [filters.from_date, filters.to_date]],
 	# 	"status": "prospect"
@@ -278,7 +284,7 @@ def get_data(filters) -> list[dict]:
 	roles = frappe.get_roles()
 	is_marketing_head = True if "Marketing Head" in roles else False
 
-	if is_receptionist and not is_marketing_head:
+	if is_receptionist and not is_marketing_head and "Marketing Head(new)" not in roles:
 		receptionist = frappe.db.get_value('Receptionist', {'email': user}, ['name', 'email'], as_dict=1)
 		center = frappe.db.get_value('Center', {'clinic_manager': receptionist.email}, ['name'], as_dict=1)
 		if is_executive:
@@ -287,7 +293,7 @@ def get_data(filters) -> list[dict]:
 		else:
 			bookings = list(filter(lambda x: x.get("center") == center.name, bookings))
 
-	elif is_executive and not is_marketing_head:
+	elif is_executive and not is_marketing_head and "Marketing Head(new)" not in roles:
 		executive = frappe.db.get_value('Executive', {'email': user}, ['name'], as_dict=1)
 		bookings = list(filter(lambda x: x.get("executive") == executive.name, bookings))
 	

@@ -303,9 +303,12 @@ def filter_data_by_assigned_centres(data, center_field="center"):
 	if not assigned_centres:
 		# No centres assigned, return empty list
 		return []
-	
-	# Filter data by assigned centres
-	return [row for row in data if row.get(center_field) in assigned_centres]
+
+	# Normalize for comparison (strip, case-insensitive) to handle "Mumbai" vs "mumbai"
+	def _norm(s):
+		return (s or "").strip().lower()
+	assigned_set = {_norm(c) for c in assigned_centres}
+	return [row for row in data if _norm(row.get(center_field)) in assigned_set]
 
 
 def get_center_permission_query_condition(user, doctype=None):
@@ -318,15 +321,15 @@ def get_center_permission_query_condition(user, doctype=None):
 		return ""
 	
 	# Check if user has Centre Assignment (similar to checking if user is Executive)
-	assignment_exists = frappe.db.exists("Centre Assignment", {"user": user})
+	assignment_name = frappe.db.exists("Centre Assignment", {"user": user})
 	
-	if not assignment_exists:
+	if not assignment_name:
 		# No centre assignment, return empty
 		return ""
 	
-	# Get the assignment document to fetch assigned centres
+	# Get the assignment document by name (autoname is format:{user})
 	try:
-		assignment_doc = frappe.get_doc("Centre Assignment", {"user": user})
+		assignment_doc = frappe.get_doc("Centre Assignment", assignment_name)
 		assigned_centres = [c.center for c in assignment_doc.centres]
 		
 		if not assigned_centres:

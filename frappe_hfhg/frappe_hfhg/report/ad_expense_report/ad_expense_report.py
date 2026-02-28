@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import apply_marketing_head_center_filter
 
 Filters = frappe._dict
 
@@ -205,8 +206,8 @@ def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, s
         params["source"] = filters["source"]
     if filters.get("subsource"):
         params["subsource"] = filters["subsource"]
-    
-    rows = frappe.db.sql(
+
+    query = (
         f"""
         SELECT DISTINCT
             CASE
@@ -236,10 +237,10 @@ def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, s
         + """
         GROUP BY ad_identifier
         HAVING ad_identifier IS NOT NULL AND ad_identifier != ''
-        """,
-        params,
-        as_dict=True,
+        """
     )
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
     
     identifiers: list[str] = []
     fallback_names: dict[str, str] = {}
@@ -339,7 +340,7 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
     if filters.get("subsource"):
         params["subsource"] = filters["subsource"]
 
-    revenue_rows = frappe.db.sql(
+    revenue_query = (
         f"""
         SELECT 
             CASE
@@ -381,10 +382,10 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
         + """
         GROUP BY canonical_id, display_name
         HAVING canonical_id IS NOT NULL AND canonical_id != ''
-        """,
-        params,
-        as_dict=True,
+        """
     )
+    revenue_query, params = apply_marketing_head_center_filter(revenue_query, params, center_field="center", table_alias="l")
+    revenue_rows = frappe.db.sql(revenue_query, params, as_dict=True)
 
     revenue_map: dict[str, float] = {}
     fallback_names: dict[str, str] = {}
@@ -513,7 +514,7 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
         if filters.get("subsource"):
             params["subsource"] = filters["subsource"]
 
-    rows = frappe.db.sql(
+    query = (
         f"""
         SELECT 
             CASE
@@ -538,10 +539,10 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
         + (f" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
         + """
         ORDER BY l.modified DESC
-        """,
-        params,
-        as_dict=True,
+        """
     )
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
 
     source_map: dict[str, str] = {}
     for row in rows:
@@ -584,7 +585,7 @@ def get_lead_subsources_for_canonical_ids(canonical_ids: set[str], fallback_name
         if filters.get("subsource"):
             params["subsource"] = filters["subsource"]
 
-    rows = frappe.db.sql(
+    query = (
         f"""
         SELECT 
             CASE
@@ -609,10 +610,10 @@ def get_lead_subsources_for_canonical_ids(canonical_ids: set[str], fallback_name
         + (f" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
         + """
         ORDER BY l.modified DESC
-        """,
-        params,
-        as_dict=True,
+        """
     )
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
 
     subsource_map: dict[str, str] = {}
     for row in rows:

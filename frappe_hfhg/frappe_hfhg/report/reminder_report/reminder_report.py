@@ -364,7 +364,7 @@ def get_data(filters):
     roles = frappe.get_roles()
     is_marketing_head = "Marketing Head" in roles
     
-    if is_executive and not is_marketing_head:
+    if is_executive and not is_marketing_head and "Marketing Head(new)" not in roles:
         executive = frappe.db.get_value('Executive', {'email': user}, ['name', 'fullname'], as_dict=1)
         if executive and executive.get("name") and executive.get("fullname"):
             query += " AND rm.executive IN (%(executive_name)s, %(executive_fullname)s)"

@@ -306,7 +306,7 @@ def get_data(filters) -> list[dict]:
 	roles = frappe.get_roles()
 	is_marketing_head = True if "Marketing Head" in roles else False
 
-	if is_receptionist and not is_marketing_head:
+	if is_receptionist and not is_marketing_head and "Marketing Head(new)" not in roles:
 		receptionist = frappe.db.get_value("Receptionist", {"email": user}, "name")
 		if receptionist:
 			center = frappe.db.get_value("Center", {"receptionist": receptionist}, "name")
@@ -320,7 +320,7 @@ def get_data(filters) -> list[dict]:
 				if center:
 					query += " AND s.center = %(center)s"
 					params["center"] = center
-	elif is_executive and not is_marketing_head:
+	elif is_executive and not is_marketing_head and "Marketing Head(new)" not in roles:
 		executive = frappe.db.get_value("Executive", {"email": user}, "name")
 		if executive:
 			query += " AND s.executive = %(executive)s"

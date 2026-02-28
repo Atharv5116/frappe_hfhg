@@ -157,18 +157,17 @@ def get_data(filters: Filters) -> list[dict]:
 	roles = frappe.get_roles()
 	is_marketing_head = True if "Marketing Head" in roles else False
 
-	if is_receptionist and not is_marketing_head:
+	if is_receptionist and not is_marketing_head and "Marketing Head(new)" not in roles:
 		receptionist = frappe.db.get_value('Receptionist', {'email': user}, ['name'], as_dict=1)
 		center = frappe.db.get_value('Center', {'receptionist': receptionist.name}, ['name'], as_dict=1)
 		lead_filters["center"] = center.name
 		leads = frappe.get_all("Lead", fields=["*"], filters=lead_filters)
-	
-	elif is_executive and not is_marketing_head:
+
+	elif is_executive and not is_marketing_head and "Marketing Head(new)" not in roles:
 		executive = frappe.db.get_value('Executive', {'email': user}, ['name'], as_dict=1)
 		lead_filters["executive"] = executive.name
 		leads = frappe.get_all("Lead", fields=["*"], filters=lead_filters)
-	
-	# Apply center filtering for Marketing Head(new) role
+
 	elif "Marketing Head(new)" in roles:
 		assigned_centres = get_assigned_centres_for_user(user)
 		if assigned_centres:

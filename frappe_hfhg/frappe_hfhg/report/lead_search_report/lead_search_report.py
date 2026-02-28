@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from urllib.parse import quote
+from frappe_hfhg.frappe_hfhg.doctype.centre_assignment.centre_assignment import apply_marketing_head_center_filter
 
 Filters = frappe._dict
 
@@ -119,7 +120,10 @@ def get_data(filters: Filters) -> list[dict]:
             WHERE 
         """
         query += " AND ".join(conditions)
-        
+
+        # Marketing Head(new) only: filter by assigned centres
+        query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+
         leads = frappe.db.sql(query, params, as_dict=True)
 
     for lead in leads:
