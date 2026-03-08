@@ -1,0 +1,49 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-28 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "incoming_field",
+  "lead_doctype_field",
+  "default_value"
+ ],
+ "fields": [
+  {
+   "fieldname": "incoming_field",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Incoming Field",
+   "description": "Name of the parameter from curl/form (e.g. name, contact_number, city)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lead_doctype_field",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Lead Field",
+   "options": "\nfirst_name\ncontact_number\ncity\nsource\ncenter\nmode\nmessage\ncreated_on\nage\nprofession\ntreatment_type\nconsultation_type\nplanning_time\nfamily_history\nhair_loss_stage\ncurrent_treatment\nhair_problem_hair_loss_check\nhair_problem_baldness_check\nhair_problem_handruff_check\nremark_baldness\nremark_hair_loss\nremark_dandruff\ncampaign_name\nemail\naddress\nsubsource",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_value",
+   "fieldtype": "Data",
+   "label": "Default Value",
+   "description": "Use when incoming field is empty"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-02-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Curl Lead Form Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
