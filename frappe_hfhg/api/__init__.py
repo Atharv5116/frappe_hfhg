@@ -1489,82 +1489,296 @@ def get_patient_details(surgery_id):
 # Removed get_center_from_url function - no longer needed
 # Center is now determined directly from city parameter
 
-def create_lead_background(data):
+# Auto-create Webform Campaign + Curl Lead Form: allowed Lead fields and alias map
+_CURL_LEAD_ALLOWED_FIELDS = frozenset([
+    "first_name", "contact_number", "city", "source", "center", "mode", "message",
+    "created_on", "age", "profession", "treatment_type", "consultation_type", "planning_time",
+    "family_history", "hair_loss_stage", "current_treatment", "hair_problem_hair_loss_check",
+    "hair_problem_baldness_check", "hair_problem_handruff_check", "remark_baldness",
+    "remark_hair_loss", "remark_dandruff", "campaign_name", "email", "address", "subsource",
+])
+_CURL_TO_LEAD_ALIAS = {
+    "name": "first_name",
+    "hair_problem_dandruff_check": "hair_problem_handruff_check",
+}
+_CURL_PAYLOAD_SKIP_KEYS = frozenset(["cmd", "csrf_token", "cstr"])
+
+
+def _build_curl_form_mapping_from_payload(data):
+    """Build Curl Lead Form Mapping rows from payload keys. Returns list of dicts for child table."""
+    mapping_rows = []
+    seen_lead_fields = set()
+    for key in data:
+        if not key or key in _CURL_PAYLOAD_SKIP_KEYS:
+            continue
+        lead_field = _CURL_TO_LEAD_ALIAS.get(key) or (key if key in _CURL_LEAD_ALLOWED_FIELDS else None)
+        if not lead_field or lead_field in seen_lead_fields:
+            continue
+        seen_lead_fields.add(lead_field)
+        mapping_rows.append({"incoming_field": key, "lead_doctype_field": lead_field})
+    return mapping_rows
+
+
+def _ensure_webform_campaign_and_curl_form(data):
+    """
+    If source is Website or Google Adword and campaign_name/form_key is present,
+    ensure Webform Campaign and Curl Lead Form exist; create them with mapping from payload if missing.
+    Does not create Webform Campaign Team Assignment (admin must assign team).
+    """
+    source = data.get("source")
+    if source not in ("Website", "Google Adword"):
+        return
+    form_key = data.get("form_key") or data.get("campaign_name")
+    if not form_key:
+        return
+    if frappe.db.exists("Curl Lead Form", {"form_key": form_key, "enabled": 1}):
+        return
+
+    webform_source = "Website" if source == "Website" else "Google Adword"
+    campaign_name = form_key
+
+    # Create Webform Campaign if missing
+    existing_campaign = frappe.get_all(
+        "Webform Campaign",
+        filters={"campaign_name": campaign_name, "source": webform_source, "enabled": 1},
+        limit=1,
+    )
+    if not existing_campaign:
+        webform_campaign_name = None
+        try:
+            wc = frappe.get_doc({
+                "doctype": "Webform Campaign",
+                "campaign_name": campaign_name,
+                "source": webform_source,
+                "enabled": 1,
+            })
+            wc.insert(ignore_permissions=True)
+            frappe.db.commit()
+            webform_campaign_name = wc.name
+        except Exception as e:
+            if frappe.db.is_duplicate_entry(e):
+                refetch = frappe.get_all(
+                    "Webform Campaign",
+                    filters={"campaign_name": campaign_name, "source": webform_source},
+                    limit=1,
+                )
+                webform_campaign_name = refetch[0].name if refetch else None
+            else:
+                frappe.log_error(frappe.get_traceback(), "Auto-create Webform Campaign Failed")
+                return
+    else:
+        webform_campaign_name = existing_campaign[0].name
+
+    if not webform_campaign_name:
+        return
+
+    # Create Curl Lead Form with mapping from payload if still missing
+    if frappe.db.exists("Curl Lead Form", {"form_key": form_key}):
+        return
+    mapping_rows = _build_curl_form_mapping_from_payload(data)
+    if not mapping_rows:
+        return
     try:
-        frappe.set_user("info@hairfreehairgrow.com") 
+        clf = frappe.get_doc({
+            "doctype": "Curl Lead Form",
+            "form_key": form_key,
+            "form_name": form_key,
+            "webform_campaign": webform_campaign_name,
+            "enabled": 1,
+        })
+        for row in mapping_rows:
+            clf.append("mapping", row)
+        clf.insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception as e:
+        if frappe.db.is_duplicate_entry(e):
+            pass
+        else:
+            frappe.log_error(frappe.get_traceback(), "Auto-create Curl Lead Form Failed")
+
+
+def _get_curl_lead_form(data):
+    """Look up Curl Lead Form by form_key or campaign_name. Returns form doc or None."""
+    form_key = data.get("form_key") or data.get("campaign_name")
+    if not form_key and data.get("source") == "Website Form":
+        form_key = "SEO_Form"
+    if not form_key:
+        return None
+    forms = frappe.get_all(
+        "Curl Lead Form",
+        filters={"form_key": form_key, "enabled": 1},
+        limit=1
+    )
+    if not forms:
+        return None
+    return frappe.get_doc("Curl Lead Form", forms[0].name)
+
+
+def _apply_curl_form_mapping(lead, data, form_doc):
+    """Apply Curl Lead Form mapping to lead doc. Returns campaign_name to set."""
+    campaign_name = None
+    if form_doc.webform_campaign:
+        campaign_name = frappe.db.get_value("Webform Campaign", form_doc.webform_campaign, "campaign_name")
+
+    VALID_PLANNING_TIME = ("", "Within a week", "Within a month", "Not decided yet")
+    VALID_FAMILY_HISTORY = ("", "Maternal side", "Paternal side", "Both")
+
+    for m in form_doc.mapping:
+        lead_field = m.lead_doctype_field
+        if not lead_field:
+            continue
+        value = data.get(m.incoming_field) if m.incoming_field else None
+        if value is None or value == "":
+            value = m.default_value or None
+
+        if value is not None and value != "":
+            # Type coercion and validation for specific fields
+            if lead_field == "planning_time" and value not in VALID_PLANNING_TIME:
+                value = ""
+            elif lead_field == "family_history" and value not in VALID_FAMILY_HISTORY:
+                value = ""
+            elif lead_field == "center" and value:
+                value = str(value).title()
+            elif lead_field in ("hair_problem_hair_loss_check", "hair_problem_baldness_check", "hair_problem_handruff_check"):
+                value = 1 if str(value).lower() in ("1", "true", "yes") else 0
+            elif lead_field == "age" and value:
+                try:
+                    value = int(value)
+                except (ValueError, TypeError):
+                    value = None
+
+        if value is not None:
+            lead.set(lead_field, value)
+
+    # Fallbacks when mapping did not set required fields
+    if not lead.center:
+        lead.center = data.get("center") and str(data.get("center")).title() or "Unknown"
+    if not lead.first_name:
+        lead.first_name = data.get("name") or data.get("first_name")
+    if not lead.source:
+        lead.source = data.get("source")
+    if not lead.contact_number:
+        lead.contact_number = data.get("contact_number")
+    if not lead.city:
+        lead.city = data.get("city")
+    return campaign_name or data.get("campaign_name")
+
+
+def _create_webform_lead_log(data):
+    """Create Webform Lead Log (like Meta flow) when source is Website or Google Adword. Returns log name or None."""
+    source = data.get("source")
+    if source not in ("Website", "Google Adword", "Website Form"):
+        return None
+    log_source = "Website" if source == "Website Form" else source
+    try:
+        campaign_name = data.get("campaign_name") or data.get("form_key")
+        log = frappe.get_doc({
+            "doctype": "Webform Lead Log",
+            "source": log_source,
+            "campaign_name": campaign_name,
+            "received_time": frappe.utils.now(),
+            "raw_payload": json.dumps(data, default=str),
+            "processing_status": "Pending",
+        })
+        log.insert(ignore_permissions=True)
+        frappe.db.commit()
+        return log.name
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Webform Lead Log creation failed")
+        return None
+
+
+def create_lead_background(data):
+    webform_log_name = None
+    try:
+        frappe.set_user("info@hairfreehairgrow.com")
+
+        if data.get("source") in ("Website", "Google Adword", "Website Form"):
+            webform_log_name = _create_webform_lead_log(data)
+
+        if data.get("source") in ("Website", "Google Adword") and (data.get("campaign_name") or data.get("form_key")):
+            _ensure_webform_campaign_and_curl_form(data)
 
         lead = frappe.new_doc("Lead")
-        
-        # Determine center from city parameter
-        city = data.get("city")
-        center = data.get("center")
-        
-        if center:
-            # Use city as center - convert to proper case: "bangalore" → "Bangalore"
-            lead.center = center.title()
-        else:
-            # Fallback if no city provided
-            lead.center = "Unknown"
+        form_doc = _get_curl_lead_form(data)
 
-        # Set source first to check for campaign_name logic
-        source = data.get("source")
-        lead.source = source
-        
-        # Set campaign_name based on source
-        # If source is "Website Form", use "SEO_Form"
-        # Otherwise, use the campaign_name from curl request
-        if source == "Website Form":
-            lead.campaign_name = "SEO_Form"
+        if form_doc and form_doc.mapping:
+            # Use Curl Lead Form mapping
+            campaign_name = _apply_curl_form_mapping(lead, data, form_doc)
+            if data.get("source") == "Website Form" and not campaign_name:
+                campaign_name = "SEO_Form"
+            lead.campaign_name = campaign_name or data.get("campaign_name")
         else:
-            lead.campaign_name = data.get("campaign_name")
-        
-        # Set other fields
-        lead.mode = data.get("mode", "Workflow")
-        lead.first_name = data.get("name")
-        lead.contact_number = data.get("contact_number")
-        lead.message = data.get("message", "")
-        lead.city = city
-        
-        # Set additional fields from your curl
-        lead.created_on = data.get("created_on")
-        lead.age = data.get("age")
-        lead.profession = data.get("profession")
-        lead.treatment_type = data.get("treatment_type")
-        lead.consultation_type = data.get("consultation_type")
-        
-        # planning_time validation - convert "Immediately" to valid option
-        planning_time = data.get("planning_time")
-        if planning_time and planning_time not in ["", "Within a week", "Within a month", "Not decided yet"]:
-            lead.planning_time = ""  # Default to empty if invalid
-        else:
-            lead.planning_time = planning_time
-            
-        # family_history validation - only set if valid option
-        family_history = data.get("family_history")
-        if family_history and family_history not in ["", "Maternal side", "Paternal side", "Both"]:
-            lead.family_history = ""  # Default to empty if invalid
-        else:
-            lead.family_history = family_history
-        lead.hair_loss_stage = data.get("hair_loss_stage")
-        lead.current_treatment = data.get("current_treatment")
-        lead.hair_problem_hair_loss_check = data.get("hair_problem_hair_loss_check")
-        lead.hair_problem_baldness_check = data.get("hair_problem_baldness_check")
-        lead.remark_baldness = data.get("remark_baldness")
-        lead.hair_problem_dandruff_check = data.get("hair_problem_dandruff_check")
-        
-        # Skip ht_sessions and ad_name - these have strict validation
-        # They will be left empty if not provided with valid values
+            # Legacy: hardcoded mapping (backward compatible)
+            city = data.get("city")
+            center = data.get("center")
+            if center:
+                lead.center = center.title()
+            else:
+                lead.center = "Unknown"
 
-        # **Executive assignment will be handled by before_insert() method in Lead doctype**
-        # This ensures proper campaign-based assignment rules are followed
-        
-        # Insert - this will trigger before_insert() which handles assignment
+            source = data.get("source")
+            lead.source = source
+            if source == "Website Form":
+                # Use payload campaign_name when provided so Webform Campaign assignment can run
+                lead.campaign_name = data.get("campaign_name") or "SEO_Form"
+            else:
+                lead.campaign_name = data.get("campaign_name")
+
+            lead.mode = data.get("mode", "Workflow")
+            lead.first_name = data.get("name")
+            lead.contact_number = data.get("contact_number")
+            lead.message = data.get("message", "")
+            lead.city = city
+            lead.created_on = data.get("created_on")
+            lead.age = data.get("age")
+            lead.profession = data.get("profession")
+            lead.treatment_type = data.get("treatment_type")
+            lead.consultation_type = data.get("consultation_type")
+
+            planning_time = data.get("planning_time")
+            if planning_time and planning_time not in ["", "Within a week", "Within a month", "Not decided yet"]:
+                lead.planning_time = ""
+            else:
+                lead.planning_time = planning_time
+
+            family_history = data.get("family_history")
+            if family_history and family_history not in ["", "Maternal side", "Paternal side", "Both"]:
+                lead.family_history = ""
+            else:
+                lead.family_history = family_history
+            lead.hair_loss_stage = data.get("hair_loss_stage")
+            lead.current_treatment = data.get("current_treatment")
+            lead.hair_problem_hair_loss_check = data.get("hair_problem_hair_loss_check")
+            lead.hair_problem_baldness_check = data.get("hair_problem_baldness_check")
+            lead.remark_baldness = data.get("remark_baldness")
+            lead.hair_problem_handruff_check = data.get("hair_problem_dandruff_check") or data.get("hair_problem_handruff_check")
+
+        # Executive assignment handled by Lead.before_insert()
         lead.insert(ignore_permissions=True, ignore_links=True)
         frappe.db.commit()
-        
-        frappe.logger().info(f"✅ Lead created successfully: {lead.name} - {lead.first_name} - Center: {lead.center}")
+        frappe.logger().info(f"Lead created: {lead.name} - {lead.first_name} - Center: {lead.center}")
+
+        if webform_log_name:
+            log_doc = frappe.get_doc("Webform Lead Log", webform_log_name)
+            log_doc.db_set({
+                "processing_status": "Processed",
+                "lead_doc_reference": lead.name,
+                "error_message": "",
+            })
+            frappe.db.commit()
 
     except Exception as e:
+        if webform_log_name:
+            try:
+                log_doc = frappe.get_doc("Webform Lead Log", webform_log_name)
+                log_doc.db_set({
+                    "processing_status": "Error",
+                    "error_message": str(e),
+                })
+                frappe.db.commit()
+            except Exception:
+                pass
         error_msg = f"Lead Creation Failed: {str(e)}\nData: {data}"
         frappe.logger().error(error_msg)
         frappe.log_error(frappe.get_traceback(), "Lead Creation Failed")
@@ -1573,9 +1787,17 @@ def create_lead_background(data):
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 def add_lead():
     data = frappe.form_dict
-    if not data.get("contact_number") or not data.get("name") or not data.get("city") or not data.get("source"):
-        return {"status": "error", "message": _("Please enter all required fields")}
+    if not data.get("contact_number"):
+        return {"status": "error", "message": _("contact_number is required")}
     validate_phone_number(data.get("contact_number"))
+
+    # When using Curl Lead Form (form_key/campaign_name), other fields come from mapping
+    form_key = data.get("form_key") or data.get("campaign_name")
+    if not form_key and data.get("source") == "Website Form":
+        form_key = "SEO_Form"
+    has_form = bool(form_key and frappe.db.exists("Curl Lead Form", {"form_key": form_key, "enabled": 1}))
+    if not has_form and (not data.get("name") or not data.get("city") or not data.get("source")):
+        return {"status": "error", "message": _("Please enter all required fields: name, city, source")}
 
     frappe.enqueue(
         method="frappe_hfhg.api.create_lead_background", 

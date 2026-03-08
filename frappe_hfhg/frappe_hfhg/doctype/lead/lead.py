@@ -12,6 +12,106 @@ from datetime import datetime
 from frappe.utils import today
 
 AUTO_LINK_SOURCE_EXCLUSIONS = {"META", "FACEBOOK", "INSTAGRAM"}
+# Webform/Curl leads: do not link ad_name from source so Webform Campaign assignment is not overwritten
+AUTO_LINK_WEBFORM_SOURCES = {"Website", "Website Form", "Google Adword"}
+
+
+def assign_executive_from_webform_campaign(lead_doc):
+	"""
+	Assign executive for curl/webform leads (source Website or Google Adword) using
+	Webform Campaign -> Webform Campaign Team Assignment -> Campaign Team (least-loaded).
+	Called from Lead.before_insert only for these sources; no interaction with Meta/ad_name logic.
+	"""
+	source = (getattr(lead_doc, "source", None) or "").strip()
+	campaign_name = getattr(lead_doc, "campaign_name", None) or (lead_doc.get("campaign_name") if hasattr(lead_doc, "get") else None)
+	if not campaign_name or source not in ("Website", "Google Adword"):
+		return
+
+	# 1) Find Webform Campaign by campaign_name field, else by doc name
+	webform_campaigns = frappe.get_all(
+		"Webform Campaign",
+		filters={"campaign_name": campaign_name, "enabled": 1},
+		fields=["name"],
+		limit=1,
+	)
+	if not webform_campaigns and frappe.db.exists("Webform Campaign", campaign_name):
+		enabled = frappe.db.get_value("Webform Campaign", campaign_name, "enabled")
+		if enabled:
+			webform_campaigns = [frappe._dict({"name": campaign_name})]
+	if not webform_campaigns:
+		return
+
+	wc_name = webform_campaigns[0].get("name") or webform_campaigns[0].name
+
+	# 2) Get Webform Campaign Team Assignment
+	assignment = frappe.get_all(
+		"Webform Campaign Team Assignment",
+		filters={"webform_campaign": wc_name, "enabled": 1},
+		fields=["name"],
+		limit=1,
+	)
+	if not assignment:
+		frappe.log_error(
+			f"No Webform Campaign Team Assignment for campaign '{wc_name}'. Lead will have no executive.",
+			"Lead Executive Assignment (Webform)"
+		)
+		return
+
+	ta_name = assignment[0].get("name") or assignment[0].name
+	assignee_doc = frappe.get_doc("Webform Campaign Team Assignment", ta_name)
+	assignee_doctype = getattr(assignee_doc, "assignee_doctype", None) or assignee_doc.get("assignee_doctype")
+	assign_to = getattr(assignee_doc, "assign_to", None) or assignee_doc.get("assign_to")
+	if not assignee_doctype or not assign_to:
+		return
+
+	# 3) Assign: User or Campaign Team
+	try:
+		if assignee_doctype == "User":
+			if frappe.db.exists("Executive", {"email": assign_to}):
+				executive = frappe.get_doc("Executive", {"email": assign_to})
+				lead_doc.executive = executive.name
+			return
+
+		if assignee_doctype == "Campaign Team":
+			team_name_to_use = assign_to
+			if not frappe.db.exists("Campaign Team", assign_to):
+				for t in frappe.get_all("Campaign Team", fields=["name", "team_name"]):
+					if (t.team_name or "").strip().lower() == (assign_to or "").strip().lower():
+						team_name_to_use = t.name
+						break
+			all_team_executives = frappe.get_all(
+				"Campaign Team Executives",
+				filters={"parent": team_name_to_use},
+				fields=["executive"],
+				order_by="executive asc",
+			)
+			if not all_team_executives:
+				frappe.log_error(
+					f"No executives found in Campaign Team '{assign_to}' (resolved: '{team_name_to_use}'). Skipping assignment.",
+					"Lead Executive Assignment (Webform)"
+				)
+				return
+			# Round-robin: Nth lead today for this campaign -> executive at index (N % team_size)
+			today_date = datetime.now().strftime("%Y-%m-%d")
+			today_start = f"{today_date} 00:00:00"
+			today_end = f"{today_date} 23:59:59"
+			lead_count_today = frappe.db.count(
+				"Lead",
+				filters={
+					"campaign_name": campaign_name,
+					"created_on": ["between", [today_start, today_end]],
+					"status": ["!=", "Duplicate Lead"],
+				},
+			)
+			team_size = len(all_team_executives)
+			assigned_index = lead_count_today % team_size
+			lead_doc.executive = all_team_executives[assigned_index]["executive"]
+			frappe.logger().info(
+				f"Webform campaign '{campaign_name}': round-robin assign (count today={lead_count_today}, index={assigned_index}) -> {lead_doc.executive}"
+			)
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Lead Executive Assignment (Webform)")
+		frappe.logger().warning(f"Error in webform executive assignment: {e}")
 
 
 def auto_link_ad_name_from_source(lead_doc: Document) -> None:
@@ -19,6 +119,8 @@ def auto_link_ad_name_from_source(lead_doc: Document) -> None:
 	if not source_value:
 		return
 	if source_value.upper() in AUTO_LINK_SOURCE_EXCLUSIONS:
+		return
+	if source_value in AUTO_LINK_WEBFORM_SOURCES:
 		return
 
 	meta_ad_name = frappe.db.get_value("Meta Ads", {"ads_name": source_value}, "name")
@@ -316,130 +418,140 @@ class Lead(Document):
 
 	def before_insert(self):
 		auto_link_ad_name_from_source(self)
-		assignee_doctype, assign_to = None, None  # Ensure these variables are always defined
 
-		if self.campaign_name:
-			# Special handling for SEO_Form campaign (curl imports)
-			if self.campaign_name == "SEO_Form":
-				try:
-					# Get all executives from "website form" campaign team
-					website_form_executives = frappe.get_all(
-						"Campaign Team Executives",
-						filters={"parent": "website form"},
-						fields=["executive"]
+		# Curl/webform leads (Website, Google Adword): dedicated assignment; no interaction with Meta/SEO_Form
+		if self.campaign_name and self.get("source") in ("Website", "Google Adword"):
+			assign_executive_from_webform_campaign(self)
+		else:
+			assignee_doctype, assign_to = None, None  # Ensure these variables are always defined
+
+			if self.campaign_name:
+				webform_campaigns = frappe.get_all(
+					"Webform Campaign",
+					filters={"campaign_name": self.campaign_name, "enabled": 1},
+					fields=["name"],
+					limit=1
+				)
+				if not webform_campaigns and frappe.db.exists("Webform Campaign", self.campaign_name):
+					enabled = frappe.db.get_value("Webform Campaign", self.campaign_name, "enabled")
+					if enabled:
+						webform_campaigns = [frappe._dict({"name": self.campaign_name})]
+				if webform_campaigns:
+					wc_name = webform_campaigns[0].get("name") or webform_campaigns[0].name
+					assignment = frappe.get_all(
+						"Webform Campaign Team Assignment",
+						filters={"webform_campaign": wc_name, "enabled": 1},
+						fields=["name"],
+						limit=1
 					)
-
-					if website_form_executives:
-						# Count how many leads each member currently has assigned today
-						today_date = datetime.now().strftime("%Y-%m-%d")
-						lead_counts = {}
-						
-						for record in website_form_executives:
-							executive_name = record["executive"]
-							lead_count = frappe.db.count(
-								"Lead",
-								filters={
-									"executive": executive_name,
-									"created_on": ["between", [f"{today_date} 00:00:00", f"{today_date} 23:59:59"]],
-									"status": ["!=", "Duplicate Lead"]
-								}
-							)
-							lead_counts[executive_name] = lead_count
-
-						# Find executive with the lowest number of leads
-						min_leads = min(lead_counts.values(), default=0)
-						least_loaded_executives = [exec_name for exec_name, count in lead_counts.items() if count == min_leads]
-
-						assigned_executive = random.choice(least_loaded_executives)
-						self.executive = assigned_executive
-						
-						frappe.logger().info(f"SEO_Form campaign: Assigned lead to executive: {assigned_executive} (daily count: {min_leads})")
+					if assignment:
+						ta_name = assignment[0].get("name") or assignment[0].name
+						assignee_doc = frappe.get_doc("Webform Campaign Team Assignment", ta_name)
+						assignee_doctype = assignee_doc.assignee_doctype
+						assign_to = getattr(assignee_doc, "assign_to", None) or assignee_doc.get("assign_to")
 					else:
-						frappe.log_error("No executives found in 'website form' campaign team for SEO_Form campaign. Skipping assignment.")
+						frappe.log_error(
+							f"No Webform Campaign Team Assignment for campaign '{wc_name}'. Lead will have no executive.",
+							"Lead Executive Assignment"
+						)
 
-				except Exception as e:
-					frappe.log_error(f"Error in assigning executive from website form team for SEO_Form campaign: {str(e)}")
-			else:
-				# Regular Meta Campaign handling (original logic)
-				try:
-					campaign = frappe.get_doc("Meta Campaign", self.campaign_name)
-					assignee_doctype = getattr(campaign, "assignee_doctype", None)
-					assign_to = getattr(campaign, "assign_to", None)
-				except frappe.DoesNotExistError:
-					frappe.log_error(f"Campaign '{self.campaign_name}' not found. Skipping campaign-based assignment.")
-
-		if self.ad_name:
-			try:
-					# Get the latest webhook log entry for the `ad_id`
-					webhook_log = frappe.get_all(
-							"Meta Webhook Lead Logs",
-							filters={"ad_id": self.ad_name},
-							fields=["form_id"],
-							order_by="received_time DESC",  # Sort by latest `received_time`
-							limit_page_length=1  # Fetch only the latest record
-					)
-
-					if webhook_log:
-							form_id = webhook_log[0].get("form_id")  # Use `.get()` to avoid KeyError
-
-							# Use `form_id` to find assignment details in `Meta Lead Form`
-							lead_form = frappe.get_all(
-									"Meta Lead Form",
-									filters={"form_id": form_id},
-									fields=["assignee_doctype", "assign_to"]
+				if not assignee_doctype or not assign_to:
+					if self.campaign_name == "SEO_Form":
+						try:
+							website_form_executives = frappe.get_all(
+								"Campaign Team Executives",
+								filters={"parent": "website form"},
+								fields=["executive"]
 							)
+							if website_form_executives:
+								today_date = datetime.now().strftime("%Y-%m-%d")
+								lead_counts = {
+									r["executive"]: frappe.db.count("Lead", filters={
+										"executive": r["executive"],
+										"created_on": ["between", [f"{today_date} 00:00:00", f"{today_date} 23:59:59"]],
+										"status": ["!=", "Duplicate Lead"]
+									})
+									for r in website_form_executives
+								}
+								min_leads = min(lead_counts.values(), default=0)
+								least_loaded = [e for e, c in lead_counts.items() if c == min_leads]
+								self.executive = random.choice(least_loaded)
+								frappe.logger().info(f"SEO_Form: Assigned to {self.executive}")
+							else:
+								frappe.log_error("No executives in 'website form' campaign team for SEO_Form.")
+						except Exception as e:
+							frappe.log_error(f"SEO_Form assignment error: {str(e)}")
+					else:
+						try:
+							campaign = frappe.get_doc("Meta Campaign", self.campaign_name)
+							assignee_doctype = getattr(campaign, "assignee_doctype", None)
+							assign_to = getattr(campaign, "assign_to", None)
+						except frappe.DoesNotExistError:
+							frappe.log_error(f"Campaign '{self.campaign_name}' not found. Skipping campaign-based assignment.")
 
-							if lead_form:
-									assignee_doctype = lead_form[0].get("assignee_doctype")
-									assign_to = lead_form[0].get("assign_to")
-
-			except Exception as e:
+			if self.ad_name and (not assignee_doctype or not assign_to):
+				try:
+					webhook_log = frappe.get_all(
+						"Meta Webhook Lead Logs",
+						filters={"ad_id": self.ad_name},
+						fields=["form_id"],
+						order_by="received_time DESC",
+						limit_page_length=1
+					)
+					if webhook_log:
+						form_id = webhook_log[0].get("form_id")
+						lead_form = frappe.get_all(
+							"Meta Lead Form",
+							filters={"form_id": form_id},
+							fields=["assignee_doctype", "assign_to"]
+						)
+						if lead_form:
+							assignee_doctype = lead_form[0].get("assignee_doctype")
+							assign_to = lead_form[0].get("assign_to")
+				except Exception as e:
 					frappe.log_error(f"Error in fetching Meta Webhook Lead Logs or Lead Form: {str(e)}")
 
-		if assignee_doctype and assign_to:
-			try:
+			if assignee_doctype and assign_to:
+				try:
 					if assignee_doctype == "User":
-							if frappe.db.exists("Executive", {"email": assign_to}):
-									executive = frappe.get_doc("Executive", {"email": assign_to})
-									self.executive = executive.name
-
+						if frappe.db.exists("Executive", {"email": assign_to}):
+							executive = frappe.get_doc("Executive", {"email": assign_to})
+							self.executive = executive.name
 					elif assignee_doctype == "Campaign Team":
-							all_team_executives = frappe.get_all(
-									"Campaign Team Executives",
-									filters={"parent": assign_to},
-									fields=["executive"]
-							)
-
-							if all_team_executives:
-									# **New Logic: Assign to the executive with the least workload**
-									today_date = datetime.now().strftime("%Y-%m-%d")
-									lead_counts = {
-                    record["executive"]: frappe.db.count(
-                        "Lead",
-                        filters={
-                            "executive": record["executive"],
-                            "created_on": ["between", [f"{today_date} 00:00:00", f"{today_date} 23:59:59"]],
-                            "status": ["!=", "Duplicate Lead"],
-                            **({"ad_name": self.ad_name} if self.ad_name else {}),
-                            **({"campaign_name": self.campaign_name} if self.campaign_name else {})
-                        }
-                    )
-                    for record in all_team_executives
-                	}
-
-									# **Find executive with the least assigned leads**
-									min_leads = min(lead_counts.values(), default=0)
-									least_loaded_executives = [exec_name for exec_name, count in lead_counts.items() if count == min_leads]
-
-									# **Randomly assign from least-loaded**
-									assigned_executive = random.choice(least_loaded_executives)
-									self.executive = assigned_executive
-							else:
-									frappe.log_error(f"No executives found in Campaign Team '{assign_to}'. Skipping assignment.")
-
-			except Exception as e:
+						team_name_to_use = assign_to
+						if not frappe.db.exists("Campaign Team", assign_to):
+							for t in frappe.get_all("Campaign Team", fields=["name", "team_name"]):
+								if (t.team_name or "").strip().lower() == (assign_to or "").strip().lower():
+									team_name_to_use = t.name
+									break
+						all_team_executives = frappe.get_all(
+							"Campaign Team Executives",
+							filters={"parent": team_name_to_use},
+							fields=["executive"]
+						)
+						if all_team_executives:
+							today_date = datetime.now().strftime("%Y-%m-%d")
+							lead_counts = {
+								record["executive"]: frappe.db.count(
+									"Lead",
+									filters={
+										"executive": record["executive"],
+										"created_on": ["between", [f"{today_date} 00:00:00", f"{today_date} 23:59:59"]],
+										"status": ["!=", "Duplicate Lead"],
+										**({"ad_name": self.ad_name} if self.ad_name else {}),
+										**({"campaign_name": self.campaign_name} if self.campaign_name else {})
+									}
+								)
+								for record in all_team_executives
+							}
+							min_leads = min(lead_counts.values(), default=0)
+							least_loaded_executives = [exec_name for exec_name, count in lead_counts.items() if count == min_leads]
+							self.executive = random.choice(least_loaded_executives)
+						else:
+							frappe.log_error(f"No executives found in Campaign Team '{assign_to}'. Skipping assignment.")
+				except Exception as e:
 					frappe.logger().warning(f"Error in assigning executive: {str(e)}")
-	
+
 		# Only set to "New Lead" if status is not already set or is not one of the exempt statuses
 		exempt_statuses = ["Not Connected", "Fake Lead", "Invalid Number", "Duplicate Lead"]
 		if not self.status or self.status not in exempt_statuses:

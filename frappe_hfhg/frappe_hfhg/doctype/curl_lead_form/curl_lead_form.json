@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:form_key",
+ "creation": "2025-02-28 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "form_details_section",
+  "form_key",
+  "form_name",
+  "webform_campaign",
+  "enabled",
+  "form_mapping_section",
+  "mapping"
+ ],
+ "fields": [
+  {
+   "fieldname": "form_details_section",
+   "fieldtype": "Section Break",
+   "label": "Form Details"
+  },
+  {
+   "fieldname": "form_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Form Key",
+   "description": "Unique identifier for this form. Pass as form_key in curl, or use campaign_name to match.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "form_name",
+   "fieldtype": "Data",
+   "label": "Form Name",
+   "description": "Human-readable name"
+  },
+  {
+   "fieldname": "webform_campaign",
+   "fieldtype": "Link",
+   "label": "Webform Campaign",
+   "options": "Webform Campaign",
+   "description": "For executive assignment. campaign_name on Lead will be set from this."
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "form_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Field Mapping"
+  },
+  {
+   "fieldname": "mapping",
+   "fieldtype": "Table",
+   "label": "Mapping",
+   "options": "Curl Lead Form Mapping",
+   "description": "Map incoming curl parameters to Lead doctype fields."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2025-02-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Hfhg",
+ "name": "Curl Lead Form",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
