@@ -1523,20 +1523,22 @@ def _ensure_webform_campaign_and_curl_form(data):
     form_key = data.get("form_key") or data.get("campaign_name")
     if not form_key:
         return
-    if frappe.db.exists("Curl Lead Form", {"form_key": form_key, "enabled": 1}):
-        return
 
     webform_source = "Website" if source == "Website" else "Google Adword"
     campaign_name = form_key
+    logger = frappe.logger("curl_lead_auto_create", with_more_info=True)
 
-    # Create Webform Campaign if missing
+    # --- Step 1: Ensure Webform Campaign exists (independent of Curl Lead Form) ---
+    webform_campaign_name = None
     existing_campaign = frappe.get_all(
         "Webform Campaign",
-        filters={"campaign_name": campaign_name, "source": webform_source, "enabled": 1},
+        filters={"campaign_name": campaign_name, "source": webform_source},
         limit=1,
     )
-    if not existing_campaign:
-        webform_campaign_name = None
+    if existing_campaign:
+        webform_campaign_name = existing_campaign[0].name
+        logger.info(f"Webform Campaign already exists: {webform_campaign_name}")
+    else:
         try:
             wc = frappe.get_doc({
                 "doctype": "Webform Campaign",
@@ -1547,6 +1549,7 @@ def _ensure_webform_campaign_and_curl_form(data):
             wc.insert(ignore_permissions=True)
             frappe.db.commit()
             webform_campaign_name = wc.name
+            logger.info(f"Created Webform Campaign: {webform_campaign_name}")
         except Exception as e:
             if frappe.db.is_duplicate_entry(e):
                 refetch = frappe.get_all(
@@ -1555,20 +1558,38 @@ def _ensure_webform_campaign_and_curl_form(data):
                     limit=1,
                 )
                 webform_campaign_name = refetch[0].name if refetch else None
+                logger.info(f"Webform Campaign duplicate resolved: {webform_campaign_name}")
             else:
-                frappe.log_error(frappe.get_traceback(), "Auto-create Webform Campaign Failed")
-                return
-    else:
-        webform_campaign_name = existing_campaign[0].name
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    f"Auto-create Webform Campaign Failed | source={webform_source} campaign={campaign_name}",
+                )
+                logger.error(f"Webform Campaign creation failed for {campaign_name}: {e}")
+
+    # --- Step 2: Ensure Curl Lead Form exists and has campaign linked ---
+    existing_clf = frappe.get_all(
+        "Curl Lead Form",
+        filters={"form_key": form_key},
+        fields=["name", "webform_campaign"],
+        limit=1,
+    )
+    if existing_clf:
+        if webform_campaign_name and not existing_clf[0].webform_campaign:
+            frappe.db.set_value(
+                "Curl Lead Form", existing_clf[0].name,
+                "webform_campaign", webform_campaign_name,
+            )
+            frappe.db.commit()
+            logger.info(f"Linked existing Curl Lead Form {existing_clf[0].name} to campaign {webform_campaign_name}")
+        return
 
     if not webform_campaign_name:
+        logger.warning(f"Skipping Curl Lead Form creation: no Webform Campaign for form_key={form_key}")
         return
 
-    # Create Curl Lead Form with mapping from payload if still missing
-    if frappe.db.exists("Curl Lead Form", {"form_key": form_key}):
-        return
     mapping_rows = _build_curl_form_mapping_from_payload(data)
     if not mapping_rows:
+        logger.warning(f"Skipping Curl Lead Form creation: no mappable fields in payload for form_key={form_key}")
         return
     try:
         clf = frappe.get_doc({
@@ -1582,11 +1603,16 @@ def _ensure_webform_campaign_and_curl_form(data):
             clf.append("mapping", row)
         clf.insert(ignore_permissions=True)
         frappe.db.commit()
+        logger.info(f"Created Curl Lead Form: {form_key} linked to campaign {webform_campaign_name}")
     except Exception as e:
         if frappe.db.is_duplicate_entry(e):
-            pass
+            logger.info(f"Curl Lead Form duplicate for form_key={form_key}, ignoring")
         else:
-            frappe.log_error(frappe.get_traceback(), "Auto-create Curl Lead Form Failed")
+            frappe.log_error(
+                frappe.get_traceback(),
+                f"Auto-create Curl Lead Form Failed | form_key={form_key}",
+            )
+            logger.error(f"Curl Lead Form creation failed for {form_key}: {e}")
 
 
 def _get_curl_lead_form(data):
@@ -1688,8 +1714,14 @@ def create_lead_background(data):
         if data.get("source") in ("Website", "Google Adword", "Website Form"):
             webform_log_name = _create_webform_lead_log(data)
 
-        if data.get("source") in ("Website", "Google Adword") and (data.get("campaign_name") or data.get("form_key")):
+        source = data.get("source")
+        has_campaign_key = bool(data.get("campaign_name") or data.get("form_key"))
+        if source in ("Website", "Google Adword") and has_campaign_key:
             _ensure_webform_campaign_and_curl_form(data)
+        elif source in ("Website", "Google Adword") and not has_campaign_key:
+            frappe.logger("curl_lead_auto_create", with_more_info=True).warning(
+                f"Skipping campaign/curl-form auto-creation: source={source} but no campaign_name or form_key in payload. Keys: {list(data.keys())}"
+            )
 
         lead = frappe.new_doc("Lead")
         form_doc = _get_curl_lead_form(data)
