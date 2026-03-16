@@ -1515,7 +1515,7 @@ def _ensure_webform_campaign_and_curl_form(data):
     """
     If source is Website or Google Adword and campaign_name/form_key is present,
     ensure Webform Campaign and Curl Lead Form exist; create them with mapping from payload if missing.
-    Does not create Webform Campaign Team Assignment (admin must assign team).
+    Note: This does not create Webform Campaign Team Assignment (admin must assign team).
     """
     source = data.get("source")
     if source not in ("Website", "Google Adword"):
