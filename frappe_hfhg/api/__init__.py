@@ -1511,6 +1511,25 @@ def _build_curl_form_mapping_from_payload(data):
     return mapping_rows
 
 
+def _resolve_webform_campaign_doc_name(campaign_name, webform_source):
+    """
+    Return Webform Campaign document `name` by campaign_name + source.
+
+    Uses frappe.db.get_value (direct DB) so it works even when the session user
+    cannot *read* Webform Campaign (insert uses ignore_permissions=True). Without
+    this, frappe.get_all returns empty for non–System Manager users and the
+    next lead thinks the campaign does not exist → duplicate insert / broken
+    auto-create for every campaign after the first.
+    """
+    if not campaign_name:
+        return None
+    return frappe.db.get_value(
+        "Webform Campaign",
+        {"campaign_name": campaign_name, "source": webform_source},
+        "name",
+    )
+
+
 def _ensure_webform_campaign_and_curl_form(data):
     """
     If source is Website or Google Adword and campaign_name/form_key is present,
@@ -1520,7 +1539,8 @@ def _ensure_webform_campaign_and_curl_form(data):
     source = data.get("source")
     if source not in ("Website", "Google Adword"):
         return
-    form_key = data.get("form_key") or data.get("campaign_name")
+    raw_key = data.get("form_key") or data.get("campaign_name")
+    form_key = (raw_key or "").strip()
     if not form_key:
         return
 
@@ -1529,14 +1549,8 @@ def _ensure_webform_campaign_and_curl_form(data):
     logger = frappe.logger("curl_lead_auto_create", with_more_info=True)
 
     # --- Step 1: Ensure Webform Campaign exists (independent of Curl Lead Form) ---
-    webform_campaign_name = None
-    existing_campaign = frappe.get_all(
-        "Webform Campaign",
-        filters={"campaign_name": campaign_name, "source": webform_source},
-        limit=1,
-    )
-    if existing_campaign:
-        webform_campaign_name = existing_campaign[0].name
+    webform_campaign_name = _resolve_webform_campaign_doc_name(campaign_name, webform_source)
+    if webform_campaign_name:
         logger.info(f"Webform Campaign already exists: {webform_campaign_name}")
     else:
         try:
@@ -1552,12 +1566,7 @@ def _ensure_webform_campaign_and_curl_form(data):
             logger.info(f"Created Webform Campaign: {webform_campaign_name}")
         except Exception as e:
             if frappe.db.is_duplicate_entry(e):
-                refetch = frappe.get_all(
-                    "Webform Campaign",
-                    filters={"campaign_name": campaign_name, "source": webform_source},
-                    limit=1,
-                )
-                webform_campaign_name = refetch[0].name if refetch else None
+                webform_campaign_name = _resolve_webform_campaign_doc_name(campaign_name, webform_source)
                 logger.info(f"Webform Campaign duplicate resolved: {webform_campaign_name}")
             else:
                 frappe.log_error(
@@ -1565,22 +1574,25 @@ def _ensure_webform_campaign_and_curl_form(data):
                     f"Auto-create Webform Campaign Failed | source={webform_source} campaign={campaign_name}",
                 )
                 logger.error(f"Webform Campaign creation failed for {campaign_name}: {e}")
+                # Last resort: row may exist but insert failed for another reason
+                webform_campaign_name = _resolve_webform_campaign_doc_name(campaign_name, webform_source)
 
     # --- Step 2: Ensure Curl Lead Form exists and has campaign linked ---
-    existing_clf = frappe.get_all(
+    # db.get_value bypasses read permission (same issue as Webform Campaign for non–System Manager users)
+    existing_clf = frappe.db.get_value(
         "Curl Lead Form",
-        filters={"form_key": form_key},
-        fields=["name", "webform_campaign"],
-        limit=1,
+        {"form_key": form_key},
+        ["name", "webform_campaign"],
+        as_dict=True,
     )
     if existing_clf:
-        if webform_campaign_name and not existing_clf[0].webform_campaign:
+        if webform_campaign_name and not existing_clf.get("webform_campaign"):
             frappe.db.set_value(
-                "Curl Lead Form", existing_clf[0].name,
+                "Curl Lead Form", existing_clf["name"],
                 "webform_campaign", webform_campaign_name,
             )
             frappe.db.commit()
-            logger.info(f"Linked existing Curl Lead Form {existing_clf[0].name} to campaign {webform_campaign_name}")
+            logger.info(f"Linked existing Curl Lead Form {existing_clf['name']} to campaign {webform_campaign_name}")
         return
 
     if not webform_campaign_name:
@@ -1622,14 +1634,16 @@ def _get_curl_lead_form(data):
         form_key = "SEO_Form"
     if not form_key:
         return None
-    forms = frappe.get_all(
+    form_key = (form_key or "").strip()
+    # Direct DB lookup so background user does not need read permission on Curl Lead Form
+    clf_name = frappe.db.get_value(
         "Curl Lead Form",
-        filters={"form_key": form_key, "enabled": 1},
-        limit=1
+        {"form_key": form_key, "enabled": 1},
+        "name",
     )
-    if not forms:
+    if not clf_name:
         return None
-    return frappe.get_doc("Curl Lead Form", forms[0].name)
+    return frappe.get_doc("Curl Lead Form", clf_name)
 
 
 def _apply_curl_form_mapping(lead, data, form_doc):
