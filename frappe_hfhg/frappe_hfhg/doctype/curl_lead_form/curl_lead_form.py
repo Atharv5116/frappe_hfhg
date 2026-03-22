@@ -5,9 +5,15 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from frappe_hfhg.frappe_hfhg.doctype.webform_campaign.webform_campaign import make_curl_lead_form_name
+
 
 class CurlLeadForm(Document):
 	"""Form configuration for leads coming via curl/API. Defines field mapping from incoming payload to Lead doctype."""
+
+	def autoname(self):
+		# form_key often matches campaign_name strings with > — field:form_key would put invalid chars in name
+		self.name = make_curl_lead_form_name(self.form_key)
 
 	def validate(self):
 		self.validate_mapping()

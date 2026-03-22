@@ -27,37 +27,39 @@ def assign_executive_from_webform_campaign(lead_doc):
 	if not campaign_name or source not in ("Website", "Google Adword"):
 		return
 
-	# 1) Find Webform Campaign by campaign_name field, else by doc name
-	webform_campaigns = frappe.get_all(
+	webform_source = "Website" if source == "Website" else "Google Adword"
+
+	# 1) Find Webform Campaign (use DB lookup — get_all fails if user cannot read Webform Campaign)
+	wc_name = frappe.db.get_value(
 		"Webform Campaign",
-		filters={"campaign_name": campaign_name, "enabled": 1},
-		fields=["name"],
-		limit=1,
+		{"campaign_name": campaign_name, "source": webform_source, "enabled": 1},
+		"name",
 	)
-	if not webform_campaigns and frappe.db.exists("Webform Campaign", campaign_name):
+	if not wc_name:
+		wc_name = frappe.db.get_value(
+			"Webform Campaign",
+			{"campaign_name": campaign_name, "source": webform_source},
+			"name",
+		)
+	if not wc_name and frappe.db.exists("Webform Campaign", campaign_name):
 		enabled = frappe.db.get_value("Webform Campaign", campaign_name, "enabled")
 		if enabled:
-			webform_campaigns = [frappe._dict({"name": campaign_name})]
-	if not webform_campaigns:
+			wc_name = campaign_name
+	if not wc_name:
 		return
 
-	wc_name = webform_campaigns[0].get("name") or webform_campaigns[0].name
-
-	# 2) Get Webform Campaign Team Assignment
-	assignment = frappe.get_all(
+	# 2) Get Webform Campaign Team Assignment (DB lookup — same permission issue as Webform Campaign)
+	ta_name = frappe.db.get_value(
 		"Webform Campaign Team Assignment",
-		filters={"webform_campaign": wc_name, "enabled": 1},
-		fields=["name"],
-		limit=1,
+		{"webform_campaign": wc_name, "enabled": 1},
+		"name",
 	)
-	if not assignment:
+	if not ta_name:
 		frappe.log_error(
 			f"No Webform Campaign Team Assignment for campaign '{wc_name}'. Lead will have no executive.",
 			"Lead Executive Assignment (Webform)"
 		)
 		return
-
-	ta_name = assignment[0].get("name") or assignment[0].name
 	assignee_doc = frappe.get_doc("Webform Campaign Team Assignment", ta_name)
 	assignee_doctype = getattr(assignee_doc, "assignee_doctype", None) or assignee_doc.get("assignee_doctype")
 	assign_to = getattr(assignee_doc, "assign_to", None) or assignee_doc.get("assign_to")
