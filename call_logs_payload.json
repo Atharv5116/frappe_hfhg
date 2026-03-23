@@ -1,0 +1,16 @@
+{
+  "call_logs": [
+    {
+      "dateTime": "14-Oct-2024 12:56:30 PM",
+      "duration": 0,
+      "name": "",
+      "phoneNumber": "+918528528526",
+      "rawType": 2,
+      "timestamp": "1728890790292",
+      "type": "OUTGOING",
+      "agentName": "Loggedin user name",
+      "agentPhoneNumber": "Loggedin user phone number",
+      "agentId": "Loggedin user id"
+    }
+  ]
+}

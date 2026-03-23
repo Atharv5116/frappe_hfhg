@@ -42,6 +42,7 @@
   "profession",
   "contact_number_copy",
   "ad_name",
+  "form_id",
   "campaign_name",
   "ticket_number",
   "message",
@@ -1015,6 +1016,11 @@
    "fieldtype": "Link",
    "label": "Ad name",
    "options": "Meta Ads"
+  },
+  {
+   "fieldname": "form_id",
+   "fieldtype": "Data",
+   "label": "Form ID"
   },
   {
    "fieldname": "whatsapp_no",
