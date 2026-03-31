@@ -7,6 +7,11 @@ from frappe.utils import formatdate
 
 class CampaignExpense(Document):
     def validate(self):
+        if getattr(self, "meta_lead_form", None) and not getattr(self, "meta_ad_id", None):
+            linked_ads = frappe.db.get_value("Meta Lead Form", self.meta_lead_form, "ads")
+            if linked_ads:
+                self.meta_ad_id = linked_ads
+
         # Synchronize legacy and new ad identifiers
         if getattr(self, "ad_name", None) and not getattr(self, "ads", None):
             self.ads = self.ad_name
@@ -73,12 +78,21 @@ class CampaignExpense(Document):
                     
                     # Get ad_id from 'Ad ID' column if present
                     ad_id = normalize_identifier(row.get('Ad ID', ''))
+
+                    # Optional: Form ID (Meta Lead Form) column
+                    form_id = normalize_identifier(row.get('Form ID', ''))
                     
                     # Get campaign from 'Campaign name' column
                     campaign_name = str(row.get('Campaign name', '')).strip()
                     
-                    if not ad_name and not ad_id:
+                    if not ad_name and not ad_id and not form_id:
                         continue
+
+                    meta_lead_form = form_id or None
+                    if meta_lead_form and not ad_id:
+                        linked_ads = frappe.db.get_value("Meta Lead Form", meta_lead_form, "ads")
+                        if linked_ads:
+                            ad_id = linked_ads
                     
                     expense_date = self.date or frappe.utils.today()
                     
@@ -95,6 +109,7 @@ class CampaignExpense(Document):
                     
                     # Create Campaign Expense entry directly
                     expense = frappe.new_doc("Campaign Expense")
+                    expense.meta_lead_form = meta_lead_form
                     expense.ads = ad_name or ad_id
                     expense.ad_name = ad_name
                     expense.meta_ad_id = ad_id if ad_id else None

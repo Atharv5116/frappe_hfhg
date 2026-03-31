@@ -8,6 +8,7 @@
  "field_order": [
   "ads",
   "campaign",
+  "meta_lead_form",
   "date",
   "amount",
   "gst_amount",
@@ -23,6 +24,14 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Campaign"
+  },
+  {
+   "fieldname": "meta_lead_form",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Lead Form",
+   "options": "Meta Lead Form"
   },
   {
    "default": "Today",
@@ -54,11 +63,13 @@
   {
    "fieldname": "ad_name",
    "fieldtype": "Data",
+   "fetch_from": "meta_ad_id.ads_name",
    "label": "Ad Name"
   },
   {
    "fieldname": "meta_ad_id",
    "fieldtype": "Link",
+   "fetch_from": "meta_lead_form.ads",
    "label": "Ad ID",
    "options": "Meta Ads",
    "in_list_view": 1

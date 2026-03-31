@@ -51,6 +51,13 @@ frappe.query_reports["Ad Expense Report"] = {
       default: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     },
     {
+      fieldname: "group_by",
+      label: __("Group By"),
+      fieldtype: "Select",
+      options: ["Ad", "Form", "Campaign"],
+      default: "Ad",
+    },
+    {
       fieldname: "to_date",
       label: __("To Date"),
       fieldtype: "Date",
@@ -106,22 +113,26 @@ const updateSummary = function (report) {
       if (r.message && r.message[1]) {
         let data = r.message[1];
         
+        const filters = report.get_values() || {};
+        const groupBy = filters.group_by || "Ad";
+        const countLabel = groupBy === "Campaign" ? __("Campaigns") : groupBy === "Form" ? __("Forms") : __("Ads");
+        
         // Calculate totals
-        let total_expense = 0;
+        let totalExpense = 0;
         let total_lifetime_revenue = 0;
         let total_period_revenue = 0;
         let total_profit = 0;
         
         data.forEach(function(row) {
-          total_expense += row.total_expense || 0;
+          totalExpense += row.total_expense || 0;
           total_lifetime_revenue += row.lifetime_revenue || 0;
           total_period_revenue += row.period_revenue || 0;
           total_profit += row.net_profit || 0;
         });
         
         let avg_roi = 0;
-        if (total_expense > 0) {
-          avg_roi = ((total_period_revenue - total_expense) / total_expense) * 100;
+        if (totalExpense > 0) {
+          avg_roi = ((total_period_revenue - totalExpense) / totalExpense) * 100;
         }
         
         // Remove existing summary
@@ -132,13 +143,13 @@ const updateSummary = function (report) {
         
         summary_parts.push(`
           <h5 style="margin: 0;">
-            <strong>Ads:</strong> ${data.length}
+            <strong>${countLabel}:</strong> ${data.length}
           </h5>
         `);
         
         summary_parts.push(`
           <h5 style="margin: 0; color: #d9534f;">
-            <strong>Total Expense:</strong> ₹ ${frappe.format(total_expense, {fieldtype: 'Float', precision: 2})}
+            <strong>Total Expense:</strong> ₹ ${frappe.format(totalExpense, {fieldtype: 'Float', precision: 2})}
           </h5>
         `);
         
