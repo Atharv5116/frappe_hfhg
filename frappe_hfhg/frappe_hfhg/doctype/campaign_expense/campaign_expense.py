@@ -34,7 +34,7 @@ class CampaignExpense(Document):
             # If neither is provided, set total to None or 0
             self.total_amount = None
         
-        self.ensure_unique_ad_date()
+        self.ensure_campaign_daily_entry_limit()
     
     def after_insert(self):
         """Import expenses from Excel file if uploaded"""
@@ -60,7 +60,18 @@ class CampaignExpense(Document):
             # Strip spaces from column names for easier matching
             df.columns = df.columns.str.strip()
             
-            # Expected columns: Campaign name, Ad name, Ad ID, Cost, GST amount, Total amount
+            # Expected columns: Campaign name, Form ID, Cost, GST amount, Total amount
+            required_columns = {"Campaign name", "Form ID", "Cost", "GST amount", "Total amount"}
+            missing_columns = required_columns - set(df.columns)
+            if missing_columns:
+                frappe.throw(
+                    _(
+                        "Missing required columns in uploaded file: {0}".format(
+                            ", ".join(sorted(missing_columns))
+                        )
+                    )
+                )
+
             created_count = 0
             duplicate_count = 0
             
@@ -73,45 +84,32 @@ class CampaignExpense(Document):
             
             for index, row in df.iterrows():
                 try:
-                    # Get ad_name from 'Ad name' column
-                    ad_name = normalize_identifier(row.get('Ad name', ''))
-                    
-                    # Get ad_id from 'Ad ID' column if present
-                    ad_id = normalize_identifier(row.get('Ad ID', ''))
-
-                    # Optional: Form ID (Meta Lead Form) column
+                    # Form ID (Meta Lead Form) is the primary identifier for imports
                     form_id = normalize_identifier(row.get('Form ID', ''))
-                    
+
                     # Get campaign from 'Campaign name' column
                     campaign_name = str(row.get('Campaign name', '')).strip()
-                    
-                    if not ad_name and not ad_id and not form_id:
+
+                    if not form_id:
                         continue
 
                     meta_lead_form = form_id or None
-                    if meta_lead_form and not ad_id:
-                        linked_ads = frappe.db.get_value("Meta Lead Form", meta_lead_form, "ads")
-                        if linked_ads:
-                            ad_id = linked_ads
+                    ad_id = normalize_identifier(
+                        frappe.db.get_value("Meta Lead Form", meta_lead_form, "ads")
+                    ) if meta_lead_form else ""
                     
                     expense_date = self.date or frappe.utils.today()
                     
-                    duplicate_filters = {"date": expense_date}
-                    if ad_id:
-                        duplicate_filters["meta_ad_id"] = ad_id
-                    else:
-                        duplicate_filters["ad_name"] = ad_name
-                    
-                    # Skip if a record with the same ad and date already exists
-                    if frappe.db.exists("Campaign Expense", duplicate_filters):
+                    existing_entries = self.get_campaign_entries_count(expense_date, campaign_name)
+                    # Allow only 1 entry per campaign per date; skip duplicates.
+                    if existing_entries >= 1:
                         duplicate_count += 1
                         continue
                     
                     # Create Campaign Expense entry directly
                     expense = frappe.new_doc("Campaign Expense")
                     expense.meta_lead_form = meta_lead_form
-                    expense.ads = ad_name or ad_id
-                    expense.ad_name = ad_name
+                    expense.ads = ad_id or meta_lead_form
                     expense.meta_ad_id = ad_id if ad_id else None
                     expense.campaign = campaign_name
                     expense.date = expense_date
@@ -133,7 +131,7 @@ class CampaignExpense(Document):
             
             if duplicate_count > 0:
                 frappe.msgprint(
-                    _(f"Skipped {duplicate_count} rows because an expense for the same ad and date already exists."),
+                    _(f"Skipped {duplicate_count} rows because an expense for the same campaign and date already exists."),
                     indicator="orange",
                     title="Duplicate Entries Skipped"
                 )
@@ -142,35 +140,26 @@ class CampaignExpense(Document):
             frappe.log_error(f"Error importing expenses from Excel: {str(e)}", "Campaign Expense Excel Import")
             frappe.throw(f"Failed to import expenses from Excel: {str(e)}")
 
-    def ensure_unique_ad_date(self):
+    def ensure_campaign_daily_entry_limit(self):
         if not self.date:
             return
-        
-        identifier_value = None
-        identifier_field = None
-        if getattr(self, "meta_ad_id", None):
-            identifier_field = "meta_ad_id"
-            identifier_value = self.meta_ad_id
-        elif getattr(self, "ad_name", None):
-            identifier_field = "ad_name"
-            identifier_value = self.ad_name
-        elif getattr(self, "ads", None):
-            identifier_field = "ads"
-            identifier_value = self.ads
-        
-        if not identifier_field or not identifier_value:
+
+        campaign_value = (getattr(self, "campaign", None) or "").strip()
+        if not campaign_value:
             return
-        
-        filters = {
-            identifier_field: identifier_value,
-            "date": self.date,
-        }
-        
-        if self.name:
-            filters["name"] = ["!=", self.name]
-        
-        if frappe.db.exists("Campaign Expense", filters):
+
+        existing_entries = self.get_campaign_entries_count(self.date, campaign_value, exclude_name=self.name)
+        if existing_entries >= 1:
             frappe.throw(
-                _(f"An expense for identifier '{identifier_value}' already exists on {formatdate(self.date)}."),
-                title="Duplicate Ad Expense"
+                _(f"An expense for campaign '{campaign_value}' already exists on {formatdate(self.date)}."),
+                title="Campaign Entry Limit Reached"
             )
+
+    def get_campaign_entries_count(self, expense_date, campaign_value, exclude_name=None):
+        filters = {
+            "date": expense_date,
+            "campaign": (campaign_value or "").strip(),
+        }
+        if exclude_name:
+            filters["name"] = ["!=", exclude_name]
+        return int(frappe.db.count("Campaign Expense", filters=filters) or 0)

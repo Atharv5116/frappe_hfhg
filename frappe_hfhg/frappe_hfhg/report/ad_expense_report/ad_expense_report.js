@@ -55,7 +55,7 @@ frappe.query_reports["Ad Expense Report"] = {
       label: __("Group By"),
       fieldtype: "Select",
       options: ["Ad", "Form", "Campaign"],
-      default: "Ad",
+      default: "Campaign",
     },
     {
       fieldname: "to_date",
@@ -65,8 +65,8 @@ frappe.query_reports["Ad Expense Report"] = {
       default: new Date(), // Today
     },
     {
-      fieldname: "ad_name",
-      label: __("Ad Name"),
+      fieldname: "campaign_name",
+      label: __("Campaign Name"),
       fieldtype: "Data",
     },
     {
@@ -114,7 +114,7 @@ const updateSummary = function (report) {
         let data = r.message[1];
         
         const filters = report.get_values() || {};
-        const groupBy = filters.group_by || "Ad";
+        const groupBy = filters.group_by || "Campaign";
         const countLabel = groupBy === "Campaign" ? __("Campaigns") : groupBy === "Form" ? __("Forms") : __("Ads");
         
         // Calculate totals
