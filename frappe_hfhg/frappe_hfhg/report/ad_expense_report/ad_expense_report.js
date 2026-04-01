@@ -50,13 +50,7 @@ frappe.query_reports["Ad Expense Report"] = {
       reqd: 1,
       default: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     },
-    {
-      fieldname: "group_by",
-      label: __("Group By"),
-      fieldtype: "Select",
-      options: ["Ad", "Form", "Campaign"],
-      default: "Campaign",
-    },
+
     {
       fieldname: "to_date",
       label: __("To Date"),

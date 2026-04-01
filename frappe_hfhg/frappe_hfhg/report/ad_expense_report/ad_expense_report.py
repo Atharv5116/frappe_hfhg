@@ -282,7 +282,7 @@ def get_columns(filters: Filters) -> list[dict]:
     ]
 
 def get_data(filters: Filters) -> list[dict]:
-    group_by = (filters or {}).get("group_by") or "Ad"
+    group_by = (filters or {}).get("group_by") or "Campaign"
     if group_by == "Form":
         expense_map, expense_details = get_campaign_expense_summary_by_form(filters)
         revenue_period_map, revenue_period_details = get_surgery_revenue_summary_by_form(filters, lifetime=False)
