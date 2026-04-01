@@ -33,7 +33,7 @@ def execute(filters=None) -> tuple:
     return columns, data
 
 def get_columns(filters: Filters) -> list[dict]:
-    group_by = (filters or {}).get("group_by") or "Ad"
+    group_by = (filters or {}).get("group_by") or "Campaign"
     if group_by == "Form":
         return [
             {
@@ -80,6 +80,19 @@ def get_columns(filters: Filters) -> list[dict]:
                 "precision": 2,
             },
             {
+                "label": _("Leads Generated"),
+                "fieldtype": "Int",
+                "fieldname": "leads_in_period",
+                "width": 130,
+            },
+            {
+                "label": _("Cost Per Lead (₹)"),
+                "fieldtype": "Float",
+                "fieldname": "cost_per_lead",
+                "width": 150,
+                "precision": 2,
+            },
+            {
                 "label": _("Lifetime Revenue (₹)"),
                 "fieldtype": "Float",
                 "fieldname": "lifetime_revenue",
@@ -122,6 +135,12 @@ def get_columns(filters: Filters) -> list[dict]:
                 "width": 280,
             },
             {
+                "label": _("Form ID"),
+                "fieldtype": "Data",
+                "fieldname": "form_id",
+                "width": 160,
+            },
+            {
                 "label": _("Source"),
                 "fieldtype": "Data",
                 "fieldname": "source",
@@ -137,6 +156,19 @@ def get_columns(filters: Filters) -> list[dict]:
                 "label": _("Total Expense (₹)"),
                 "fieldtype": "Float",
                 "fieldname": "total_expense",
+                "width": 150,
+                "precision": 2,
+            },
+            {
+                "label": _("Leads Generated"),
+                "fieldtype": "Int",
+                "fieldname": "leads_in_period",
+                "width": 130,
+            },
+            {
+                "label": _("Cost Per Lead (₹)"),
+                "fieldtype": "Float",
+                "fieldname": "cost_per_lead",
                 "width": 150,
                 "precision": 2,
             },
@@ -315,8 +347,8 @@ def get_data(filters: Filters) -> list[dict]:
             **revenue_period_names,
             **revenue_lifetime_names,
         })
-        sources = get_lead_sources_for_campaign_keys(all_keys, filters)
-        subsources = get_lead_subsources_for_campaign_keys(all_keys, filters)
+        latest_lead_details = get_latest_lead_details_for_campaign_keys(all_keys, filters)
+        lead_counts = get_lead_counts_for_campaign_keys(all_keys, filters)
 
         rows: list[dict] = []
         for key in sorted(all_keys, key=lambda value: (campaign_details.get(value, {}).get("campaign_name") or value)):
@@ -332,13 +364,21 @@ def get_data(filters: Filters) -> list[dict]:
             })
             net_profit = period_revenue - total_expense
             roi_percent = ((period_revenue - total_expense) / total_expense * 100) if total_expense else 0.0
+            leads_in_period = int(lead_counts.get(key, 0))
+            cost_per_lead = (total_expense / leads_in_period) if leads_in_period else 0.0
+            lead_detail = latest_lead_details.get(key, {})
+            source = lead_detail.get("source") or ""
+            form_id = lead_detail.get("form_id") or ""
 
             rows.append({
                 "campaign_id": meta.get("campaign_id") or key,
                 "campaign_name": meta.get("campaign_name") or key,
-                "source": sources.get(key, ""),
-                "subsource": subsources.get(key, "") if sources.get(key, "") == "Meta" else "",
+                "form_id": form_id,
+                "source": source,
+                "subsource": (lead_detail.get("subsource") or "") if source == "Meta" else "",
                 "total_expense": total_expense,
+                "leads_in_period": leads_in_period,
+                "cost_per_lead": cost_per_lead,
                 "lifetime_revenue": lifetime_revenue,
                 "period_revenue": period_revenue,
                 "net_profit": net_profit,
@@ -494,13 +534,13 @@ def get_campaign_expense_summary(filters: Filters) -> tuple[dict[str, float], di
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
     }
-    ad_name_filter = normalize_identifier(filters.get("ad_name"))
+    campaign_name_filter = normalize_identifier(filters.get("campaign_name"))
 
     filter_clause = ""
-    if ad_name_filter:
-        params["ad_name_filter"] = f"%{ad_name_filter}%"
+    if campaign_name_filter:
+        params["campaign_name_filter"] = f"%{campaign_name_filter}%"
         filter_clause = (
-            "AND (TRIM(ce.ad_name) LIKE %(ad_name_filter)s OR TRIM(ma_by_id.ads_name) LIKE %(ad_name_filter)s)"
+            "AND TRIM(ce.campaign) LIKE %(campaign_name_filter)s"
         )
 
     records = frappe.db.sql(
@@ -565,11 +605,11 @@ def get_campaign_expense_summary_by_campaign(filters: Filters) -> tuple[dict[str
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
     }
-    ad_name_filter = normalize_identifier(filters.get("ad_name"))
+    campaign_name_filter = normalize_identifier(filters.get("campaign_name"))
 
     filter_clause = ""
-    if ad_name_filter:
-        params["name_filter"] = f"%{ad_name_filter}%"
+    if campaign_name_filter:
+        params["name_filter"] = f"%{campaign_name_filter}%"
         filter_clause = "AND (TRIM(mc.campaign_name) LIKE %(name_filter)s OR TRIM(ce.campaign) LIKE %(name_filter)s)"
 
     records = frappe.db.sql(
@@ -623,12 +663,12 @@ def get_campaign_expense_summary_by_form(filters: Filters) -> tuple[dict[str, fl
         "from_date": filters.get("from_date"),
         "to_date": filters.get("to_date"),
     }
-    ad_name_filter = normalize_identifier(filters.get("ad_name"))
+    campaign_name_filter = normalize_identifier(filters.get("campaign_name"))
 
     filter_clause = ""
-    if ad_name_filter:
-        params["name_filter"] = f"%{ad_name_filter}%"
-        filter_clause = "AND (TRIM(mlf.form_id) LIKE %(name_filter)s OR TRIM(mlf.form_name) LIKE %(name_filter)s OR TRIM(mc.campaign_name) LIKE %(name_filter)s)"
+    if campaign_name_filter:
+        params["name_filter"] = f"%{campaign_name_filter}%"
+        filter_clause = "AND (TRIM(mc.campaign_name) LIKE %(name_filter)s OR TRIM(ce.campaign) LIKE %(name_filter)s)"
 
     records = frappe.db.sql(
         f"""
@@ -691,9 +731,11 @@ def get_surgery_revenue_summary_by_form(filters: Filters, lifetime: bool) -> tup
         params["source"] = filters["source"]
     if filters.get("subsource"):
         params["subsource"] = filters["subsource"]
+    if filters.get("campaign_name"):
+        params["campaign_name_filter"] = f"%{normalize_identifier(filters.get('campaign_name'))}%"
 
     revenue_query = (
-        """
+        f"""
         SELECT
             TRIM(l.form_id) AS form_key,
             mlf.form_id AS form_id,
@@ -723,6 +765,7 @@ def get_surgery_revenue_summary_by_form(filters: Filters, lifetime: bool) -> tup
         """
         + (" AND l.source = %(source)s" if filters.get("source") else "")
         + (" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + (" AND (TRIM(mc.campaign_name) LIKE %(campaign_name_filter)s OR TRIM(l.campaign_name) LIKE %(campaign_name_filter)s)" if filters.get("campaign_name") else "")
         + """
         GROUP BY form_key, form_id, form_name, campaign_id, campaign_name
         HAVING form_key IS NOT NULL AND form_key != ''
@@ -782,11 +825,11 @@ def get_lead_sources_for_form_keys(form_keys: set[str], filters: Filters) -> dic
         """
         + (" AND l.source = %(source)s" if filters and filters.get("source") else "")
         + (" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
-        + """
-        ORDER BY l.modified DESC
-        """
     )
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
     rows = frappe.db.sql(query, params, as_dict=True)
 
     source_map: dict[str, str] = {}
@@ -824,11 +867,11 @@ def get_lead_subsources_for_form_keys(form_keys: set[str], filters: Filters) -> 
         """
         + (" AND l.source = %(source)s" if filters and filters.get("source") else "")
         + (" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
-        + """
-        ORDER BY l.modified DESC
-        """
     )
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
     rows = frappe.db.sql(query, params, as_dict=True)
 
     subsource_map: dict[str, str] = {}
@@ -855,9 +898,11 @@ def get_surgery_revenue_summary_by_campaign(filters: Filters, lifetime: bool) ->
         params["source"] = filters["source"]
     if filters.get("subsource"):
         params["subsource"] = filters["subsource"]
+    if filters.get("campaign_name"):
+        params["campaign_name_filter"] = f"%{normalize_identifier(filters.get('campaign_name'))}%"
 
     revenue_query = (
-        """
+        f"""
         SELECT
             COALESCE(mlf.campaign, TRIM(l.campaign_name)) AS campaign_key,
             COALESCE(mc.campaign_name, TRIM(l.campaign_name)) AS campaign_name,
@@ -882,6 +927,7 @@ def get_surgery_revenue_summary_by_campaign(filters: Filters, lifetime: bool) ->
         """
         + (" AND l.source = %(source)s" if filters.get("source") else "")
         + (" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + (" AND (TRIM(mc.campaign_name) LIKE %(campaign_name_filter)s OR TRIM(l.campaign_name) LIKE %(campaign_name_filter)s)" if filters.get("campaign_name") else "")
         + """
         GROUP BY campaign_key, campaign_name
         HAVING campaign_key IS NOT NULL AND campaign_key != ''
@@ -961,11 +1007,11 @@ def get_lead_sources_for_campaign_keys(campaign_keys: set[str], filters: Filters
         """
         + (" AND l.source = %(source)s" if filters and filters.get("source") else "")
         + (" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
-        + """
-        ORDER BY l.modified DESC
-        """
     )
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
     rows = frappe.db.sql(query, params, as_dict=True)
 
     source_map: dict[str, str] = {}
@@ -1004,11 +1050,11 @@ def get_lead_subsources_for_campaign_keys(campaign_keys: set[str], filters: Filt
         """
         + (" AND l.source = %(source)s" if filters and filters.get("source") else "")
         + (" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
-        + """
-        ORDER BY l.modified DESC
-        """
     )
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
     rows = frappe.db.sql(query, params, as_dict=True)
 
     subsource_map: dict[str, str] = {}
@@ -1019,6 +1065,98 @@ def get_lead_subsources_for_campaign_keys(campaign_keys: set[str], filters: Filt
         subsource_map[key] = row.get("subsource") or ""
 
     return subsource_map
+
+
+def get_latest_lead_details_for_campaign_keys(campaign_keys: set[str], filters: Filters) -> dict[str, dict[str, str]]:
+    ids_tuple = make_identifier_tuple(set(campaign_keys))
+    if not ids_tuple:
+        return {}
+
+    params: dict[str, object] = {"campaign_keys": ids_tuple}
+    if filters and filters.get("source"):
+        params["source"] = filters["source"]
+    if filters and filters.get("subsource"):
+        params["subsource"] = filters["subsource"]
+
+    query = (
+        """
+        SELECT
+            COALESCE(mlf.campaign, TRIM(l.campaign_name)) AS campaign_key,
+            l.form_id,
+            l.source,
+            l.subsource,
+            l.modified
+        FROM `tabLead` l
+        LEFT JOIN `tabMeta Lead Form` mlf ON mlf.name = l.form_id
+        WHERE l.docstatus < 2
+          AND COALESCE(mlf.campaign, TRIM(l.campaign_name)) IN %(campaign_keys)s
+        """
+        + (" AND l.source = %(source)s" if filters and filters.get("source") else "")
+        + (" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
+    )
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
+    rows = frappe.db.sql(query, params, as_dict=True)
+
+    detail_map: dict[str, dict[str, str]] = {}
+    for row in rows:
+        key = normalize_identifier(row.get("campaign_key"))
+        if not key or key in detail_map:
+            continue
+        detail_map[key] = {
+            "form_id": row.get("form_id") or "",
+            "source": row.get("source") or "",
+            "subsource": row.get("subsource") or "",
+        }
+
+    return detail_map
+
+
+def get_lead_counts_for_campaign_keys(campaign_keys: set[str], filters: Filters) -> dict[str, int]:
+    ids_tuple = make_identifier_tuple(set(campaign_keys))
+    if not ids_tuple:
+        return {}
+
+    params: dict[str, object] = {
+        "campaign_keys": ids_tuple,
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+    }
+    if filters and filters.get("source"):
+        params["source"] = filters["source"]
+    if filters and filters.get("subsource"):
+        params["subsource"] = filters["subsource"]
+
+    query = (
+        """
+        SELECT
+            COALESCE(mlf.campaign, TRIM(l.campaign_name)) AS campaign_key,
+            COUNT(*) AS lead_count
+        FROM `tabLead` l
+        LEFT JOIN `tabMeta Lead Form` mlf ON mlf.name = l.form_id
+        WHERE l.docstatus < 2
+          AND COALESCE(mlf.campaign, TRIM(l.campaign_name)) IN %(campaign_keys)s
+          AND COALESCE(l.created_on, DATE(l.creation)) BETWEEN %(from_date)s AND %(to_date)s
+        """
+        + (" AND l.source = %(source)s" if filters and filters.get("source") else "")
+        + (" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
+        + """
+        GROUP BY campaign_key
+        """
+    )
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
+
+    count_map: dict[str, int] = {}
+    for row in rows:
+        key = normalize_identifier(row.get("campaign_key"))
+        if not key:
+            continue
+        count_map[key] = int(row.get("lead_count") or 0)
+
+    return count_map
 
 
 def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[str, float], dict[str, str]]:
@@ -1035,6 +1173,8 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
         params["source"] = filters["source"]
     if filters.get("subsource"):
         params["subsource"] = filters["subsource"]
+    if filters.get("campaign_name"):
+        params["campaign_name_filter"] = f"%{normalize_identifier(filters.get('campaign_name'))}%"
 
     revenue_query = (
         f"""
@@ -1075,6 +1215,7 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
         """
         + (f" AND l.source = %(source)s" if filters.get("source") else "")
         + (f" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + (f" AND TRIM(l.campaign_name) LIKE %(campaign_name_filter)s" if filters.get("campaign_name") else "")
         + """
         GROUP BY canonical_id, display_name
         HAVING canonical_id IS NOT NULL AND canonical_id != ''
@@ -1233,11 +1374,11 @@ def get_lead_sources_for_canonical_ids(canonical_ids: set[str], fallback_names: 
         """
         + (f" AND l.source = %(source)s" if filters and filters.get("source") else "")
         + (f" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
-        + """
-        ORDER BY l.modified DESC
-        """
     )
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
     rows = frappe.db.sql(query, params, as_dict=True)
 
     source_map: dict[str, str] = {}
@@ -1304,11 +1445,11 @@ def get_lead_subsources_for_canonical_ids(canonical_ids: set[str], fallback_name
         """
         + (f" AND l.source = %(source)s" if filters and filters.get("source") else "")
         + (f" AND l.subsource = %(subsource)s" if filters and filters.get("subsource") else "")
-        + """
-        ORDER BY l.modified DESC
-        """
     )
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    query += """
+        ORDER BY l.modified DESC
+        """
     rows = frappe.db.sql(query, params, as_dict=True)
 
     subsource_map: dict[str, str] = {}

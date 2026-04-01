@@ -58,18 +58,20 @@
   {
    "fieldname": "ads",
    "fieldtype": "Data",
-   "label": "Ads"
+   "label": "Form ID"
   },
   {
    "fieldname": "ad_name",
    "fieldtype": "Data",
    "fetch_from": "meta_ad_id.ads_name",
+   "hidden": 1,
    "label": "Ad Name"
   },
   {
    "fieldname": "meta_ad_id",
    "fieldtype": "Link",
    "fetch_from": "meta_lead_form.ads",
+   "hidden": 1,
    "label": "Ad ID",
    "options": "Meta Ads",
    "in_list_view": 1
