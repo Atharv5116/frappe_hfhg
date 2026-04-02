@@ -60,8 +60,9 @@ class CampaignExpense(Document):
             # Strip spaces from column names for easier matching
             df.columns = df.columns.str.strip()
             
-            # Expected columns: Campaign name, Form ID, Cost, GST amount, Total amount
-            required_columns = {"Campaign name", "Form ID", "Cost", "GST amount", "Total amount"}
+            # Expected columns: Campaign name, Cost, GST amount, Total amount
+            # Form ID is optional and can be blank per row.
+            required_columns = {"Campaign name", "Cost", "GST amount", "Total amount"}
             missing_columns = required_columns - set(df.columns)
             if missing_columns:
                 frappe.throw(
@@ -84,14 +85,11 @@ class CampaignExpense(Document):
             
             for index, row in df.iterrows():
                 try:
-                    # Form ID (Meta Lead Form) is the primary identifier for imports
+                    # Form ID (Meta Lead Form) is optional for imports
                     form_id = normalize_identifier(row.get('Form ID', ''))
 
                     # Get campaign from 'Campaign name' column
                     campaign_name = str(row.get('Campaign name', '')).strip()
-
-                    if not form_id:
-                        continue
 
                     meta_lead_form = form_id or None
                     ad_id = normalize_identifier(
