@@ -36,6 +36,7 @@ def get_columns(filters: Filters) -> list[dict]:
     return [
         {"label": _("Campaign"), "fieldtype": "Data", "fieldname": "campaign_name", "width": 260},
         {"label": _("Source"), "fieldtype": "Data", "fieldname": "source", "width": 140},
+        {"label": _("Sub Source"), "fieldtype": "Data", "fieldname": "subsource", "width": 140},
         {"label": _("Ad ID"), "fieldtype": "Data", "fieldname": "ad_id", "width": 180},
         {"label": _("Total Expense (₹)"), "fieldtype": "Float", "fieldname": "total_expense", "width": 150, "precision": 2},
         {"label": _("Leads Generated"), "fieldtype": "Int", "fieldname": "leads_in_period", "width": 130},
@@ -53,6 +54,7 @@ def get_data(filters: Filters) -> list[dict]:
 
     meta_lead_counts = get_meta_lead_counts(meta_ad_ids, filters)
     google_lead_counts = get_google_lead_counts(google_campaigns, filters)
+    meta_subsources = get_meta_subsources(meta_ad_ids, filters)
 
     meta_revenue = get_meta_surgery_revenue(meta_ad_ids, filters)
     google_revenue = get_google_surgery_revenue(google_campaigns, filters)
@@ -71,6 +73,7 @@ def get_data(filters: Filters) -> list[dict]:
             {
                 "campaign_name": row["campaign_name"],
                 "source": row["source"],
+                "subsource": meta_subsources.get(row["ad_id"], "") if row["source"] == "Meta" else "",
                 "ad_id": row["ad_id"] if row["source"] == "Meta" else "",
                 "total_expense": total_expense,
                 "leads_in_period": leads,
@@ -152,9 +155,7 @@ def get_meta_lead_counts(meta_ad_ids: set[str], filters: Filters) -> dict[str, i
             TRIM(l.meta_ad_id) AS ad_id,
             COUNT(*) AS lead_count
         FROM `tabLead` l
-        WHERE l.source = 'Meta'
-          AND IFNULL(l.status, '') != 'Duplicate Lead'
-          AND TRIM(l.meta_ad_id) IN %(ad_ids)s
+        WHERE TRIM(l.meta_ad_id) IN %(ad_ids)s
           AND COALESCE(l.created_on, DATE(l.creation)) BETWEEN %(from_date)s AND %(to_date)s
         GROUP BY ad_id
     """
@@ -178,7 +179,6 @@ def get_google_lead_counts(campaigns: set[str], filters: Filters) -> dict[str, i
             COUNT(*) AS lead_count
         FROM `tabLead` l
         WHERE l.source = 'Google Adword'
-          AND IFNULL(l.status, '') != 'Duplicate Lead'
           AND TRIM(l.campaign_name) IN %(campaign_names)s
           AND COALESCE(l.created_on, DATE(l.creation)) BETWEEN %(from_date)s AND %(to_date)s
         GROUP BY campaign_name
@@ -215,7 +215,6 @@ def get_meta_surgery_revenue(meta_ad_ids: set[str], filters: Filters) -> dict[st
           AND p.type = 'Payment'
           AND p.payment_type = 'Surgery'
           AND IFNULL(s.pending_amount, 0) = 0
-          AND l.source = 'Meta'
           AND IFNULL(l.status, '') != 'Duplicate Lead'
           AND TRIM(l.meta_ad_id) IN %(ad_ids)s
           AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
@@ -224,6 +223,44 @@ def get_meta_surgery_revenue(meta_ad_ids: set[str], filters: Filters) -> dict[st
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
     rows = frappe.db.sql(query, params, as_dict=True)
     return {normalize_identifier(r.get("ad_id")): cast_to_float(r.get("revenue")) for r in rows}
+
+
+def get_meta_subsources(meta_ad_ids: set[str], filters: Filters) -> dict[str, str]:
+    ids = make_identifier_tuple(meta_ad_ids)
+    if not ids:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "ad_ids": ids,
+    }
+    query = """
+        SELECT
+            TRIM(l.meta_ad_id) AS ad_id,
+            TRIM(COALESCE(l.subsource, '')) AS subsource
+        FROM `tabLead` l
+        WHERE TRIM(l.meta_ad_id) IN %(ad_ids)s
+          AND COALESCE(l.created_on, DATE(l.creation)) BETWEEN %(from_date)s AND %(to_date)s
+    """
+    rows = frappe.db.sql(query, params, as_dict=True)
+
+    ad_to_subsources: dict[str, set[str]] = {}
+    for row in rows:
+        ad_id = normalize_identifier(row.get("ad_id"))
+        if not ad_id:
+            continue
+        subsource = normalize_identifier(row.get("subsource"))
+        if not subsource:
+            continue
+        ad_to_subsources.setdefault(ad_id, set()).add(subsource)
+
+    resolved: dict[str, str] = {}
+    for ad_id, subsources in ad_to_subsources.items():
+        if len(subsources) == 1:
+            resolved[ad_id] = next(iter(subsources))
+        else:
+            resolved[ad_id] = "Mixed"
+    return resolved
 
 
 def get_google_surgery_revenue(campaigns: set[str], filters: Filters) -> dict[str, float]:
