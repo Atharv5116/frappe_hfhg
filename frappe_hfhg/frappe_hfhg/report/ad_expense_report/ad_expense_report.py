@@ -33,422 +33,235 @@ def execute(filters=None) -> tuple:
     return columns, data
 
 def get_columns(filters: Filters) -> list[dict]:
-    group_by = (filters or {}).get("group_by") or "Campaign"
-    if group_by == "Form":
-        return [
-            {
-                "label": _("Form ID"),
-                "fieldtype": "Data",
-                "fieldname": "form_id",
-                "width": 160,
-            },
-            {
-                "label": _("Form Name"),
-                "fieldtype": "Data",
-                "fieldname": "form_name",
-                "width": 260,
-            },
-            {
-                "label": _("Campaign ID"),
-                "fieldtype": "Data",
-                "fieldname": "campaign_id",
-                "width": 170,
-            },
-            {
-                "label": _("Campaign Name"),
-                "fieldtype": "Data",
-                "fieldname": "campaign_name",
-                "width": 280,
-            },
-            {
-                "label": _("Source"),
-                "fieldtype": "Data",
-                "fieldname": "source",
-                "width": 120,
-            },
-            {
-                "label": _("Sub Source"),
-                "fieldtype": "Data",
-                "fieldname": "subsource",
-                "width": 120,
-            },
-            {
-                "label": _("Total Expense (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "total_expense",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("Leads Generated"),
-                "fieldtype": "Int",
-                "fieldname": "leads_in_period",
-                "width": 130,
-            },
-            {
-                "label": _("Cost Per Lead (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "cost_per_lead",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("Lifetime Revenue (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "lifetime_revenue",
-                "width": 170,
-                "precision": 2,
-            },
-            {
-                "label": _("Period Revenue (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "period_revenue",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("Net Profit/Loss (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "net_profit",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("ROI %"),
-                "fieldtype": "Percent",
-                "fieldname": "roi_percent",
-                "width": 120,
-            },
-        ]
-    if group_by == "Campaign":
-        return [
-            {
-                "label": _("Campaign ID"),
-                "fieldtype": "Data",
-                "fieldname": "campaign_id",
-                "width": 170,
-            },
-            {
-                "label": _("Campaign Name"),
-                "fieldtype": "Data",
-                "fieldname": "campaign_name",
-                "width": 280,
-            },
-            {
-                "label": _("Form ID"),
-                "fieldtype": "Data",
-                "fieldname": "form_id",
-                "width": 160,
-            },
-            {
-                "label": _("Source"),
-                "fieldtype": "Data",
-                "fieldname": "source",
-                "width": 120,
-            },
-            {
-                "label": _("Sub Source"),
-                "fieldtype": "Data",
-                "fieldname": "subsource",
-                "width": 120,
-            },
-            {
-                "label": _("Total Expense (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "total_expense",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("Leads Generated"),
-                "fieldtype": "Int",
-                "fieldname": "leads_in_period",
-                "width": 130,
-            },
-            {
-                "label": _("Cost Per Lead (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "cost_per_lead",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("Lifetime Revenue (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "lifetime_revenue",
-                "width": 170,
-                "precision": 2,
-            },
-            {
-                "label": _("Period Revenue (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "period_revenue",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("Net Profit/Loss (₹)"),
-                "fieldtype": "Float",
-                "fieldname": "net_profit",
-                "width": 150,
-                "precision": 2,
-            },
-            {
-                "label": _("ROI %"),
-                "fieldtype": "Percent",
-                "fieldname": "roi_percent",
-                "width": 120,
-            },
-        ]
-
     return [
-        {
-            "label": _("Ad ID"),
-            "fieldtype": "Link",
-            "fieldname": "ad_id",
-            "options": "Meta Ads",
-            "width": 150,
-        },
-        {
-            "label": _("Ad Name"),
-            "fieldtype": "Data",
-            "fieldname": "ad_display_name",
-            "width": 250,
-        },
-        {
-            "label": _("Ad Status"),
-            "fieldtype": "Data",
-            "fieldname": "ad_status",
-            "width": 120,
-        },
-        {
-            "label": _("Ad Created Date"),
-            "fieldtype": "Date",
-            "fieldname": "ad_created_date",
-            "width": 130,
-        },
-        {
-            "label": _("Source"),
-            "fieldtype": "Data",
-            "fieldname": "source",
-            "width": 120,
-        },
-        {
-            "label": _("Sub Source"),
-            "fieldtype": "Data",
-            "fieldname": "subsource",
-            "width": 120,
-        },
-        {
-            "label": _("Total Expense (₹)"),
-            "fieldtype": "Float",
-            "fieldname": "total_expense",
-            "width": 150,
-            "precision": 2,
-        },
-        {
-            "label": _("Lifetime Revenue (₹)"),
-            "fieldtype": "Float",
-            "fieldname": "lifetime_revenue",
-            "width": 170,
-            "precision": 2,
-        },
-        {
-            "label": _("Period Revenue (₹)"),
-            "fieldtype": "Float",
-            "fieldname": "period_revenue",
-            "width": 150,
-            "precision": 2,
-        },
-        {
-            "label": _("Net Profit/Loss (₹)"),
-            "fieldtype": "Float",
-            "fieldname": "net_profit",
-            "width": 150,
-            "precision": 2,
-        },
-        {
-            "label": _("ROI %"),
-            "fieldtype": "Percent",
-            "fieldname": "roi_percent",
-            "width": 120,
-        },
-        {
-            "label": _("Details"),
-            "fieldtype": "Data",
-            "fieldname": "details_button",
-            "width": 110,
-        },
+        {"label": _("Campaign"), "fieldtype": "Data", "fieldname": "campaign_name", "width": 260},
+        {"label": _("Source"), "fieldtype": "Data", "fieldname": "source", "width": 140},
+        {"label": _("Ad ID"), "fieldtype": "Data", "fieldname": "ad_id", "width": 180},
+        {"label": _("Total Expense (₹)"), "fieldtype": "Float", "fieldname": "total_expense", "width": 150, "precision": 2},
+        {"label": _("Leads Generated"), "fieldtype": "Int", "fieldname": "leads_in_period", "width": 130},
+        {"label": _("Surgery Revenue (₹)"), "fieldtype": "Float", "fieldname": "surgery_revenue", "width": 170, "precision": 2},
+        {"label": _("Cost Per Lead (₹)"), "fieldtype": "Float", "fieldname": "cost_per_lead", "width": 150, "precision": 2},
     ]
 
 def get_data(filters: Filters) -> list[dict]:
-    group_by = (filters or {}).get("group_by") or "Campaign"
-    if group_by == "Form":
-        expense_map, expense_details = get_campaign_expense_summary_by_form(filters)
-        revenue_period_map, revenue_period_details = get_surgery_revenue_summary_by_form(filters, lifetime=False)
-        revenue_lifetime_map, revenue_lifetime_details = get_surgery_revenue_summary_by_form(filters, lifetime=True)
-
-        all_keys: set[str] = set(expense_map.keys())
-        all_keys.update(revenue_period_map.keys())
-        all_keys.update(revenue_lifetime_map.keys())
-        if not all_keys:
-            return []
-
-        merged_details = merge_form_details(
-            list(all_keys),
-            expense_details,
-            revenue_period_details,
-            revenue_lifetime_details,
-        )
-        sources = get_lead_sources_for_form_keys(all_keys, filters)
-        subsources = get_lead_subsources_for_form_keys(all_keys, filters)
-
-        rows: list[dict] = []
-        for key in sorted(all_keys, key=lambda value: (merged_details.get(value, {}).get("form_name") or value)):
-            period_revenue = float(revenue_period_map.get(key, 0.0))
-            total_expense = float(expense_map.get(key, 0.0))
-            if total_expense == 0 and period_revenue == 0:
-                continue
-
-            lifetime_revenue = float(revenue_lifetime_map.get(key, 0.0))
-            net_profit = period_revenue - total_expense
-            roi_percent = ((period_revenue - total_expense) / total_expense * 100) if total_expense else 0.0
-            detail = merged_details.get(key, {})
-            source_value = sources.get(key, "")
-
-            rows.append({
-                "form_id": detail.get("form_id") or key,
-                "form_name": detail.get("form_name") or key,
-                "campaign_id": detail.get("campaign_id") or "",
-                "campaign_name": detail.get("campaign_name") or "",
-                "source": source_value,
-                "subsource": subsources.get(key, "") if source_value == "Meta" else "",
-                "total_expense": total_expense,
-                "lifetime_revenue": lifetime_revenue,
-                "period_revenue": period_revenue,
-                "net_profit": net_profit,
-                "roi_percent": roi_percent,
-            })
-
-        return rows
-    if group_by == "Campaign":
-        expense_map, expense_names = get_campaign_expense_summary_by_campaign(filters)
-        revenue_period_map, revenue_period_names = get_surgery_revenue_summary_by_campaign(filters, lifetime=False)
-        revenue_lifetime_map, revenue_lifetime_names = get_surgery_revenue_summary_by_campaign(filters, lifetime=True)
-
-        all_keys: set[str] = set(expense_map.keys())
-        all_keys.update(revenue_period_map.keys())
-        all_keys.update(revenue_lifetime_map.keys())
-        if not all_keys:
-            return []
-
-        campaign_details = get_meta_campaign_details(list(all_keys), {
-            **expense_names,
-            **revenue_period_names,
-            **revenue_lifetime_names,
-        })
-        latest_lead_details = get_latest_lead_details_for_campaign_keys(all_keys, filters)
-        lead_counts = get_lead_counts_for_campaign_keys(all_keys, filters)
-
-        rows: list[dict] = []
-        for key in sorted(all_keys, key=lambda value: (campaign_details.get(value, {}).get("campaign_name") or value)):
-            period_revenue = float(revenue_period_map.get(key, 0.0))
-            total_expense = float(expense_map.get(key, 0.0))
-            if total_expense == 0 and period_revenue == 0:
-                continue
-
-            lifetime_revenue = float(revenue_lifetime_map.get(key, 0.0))
-            meta = campaign_details.get(key, {
-                "campaign_id": key,
-                "campaign_name": expense_names.get(key) or revenue_period_names.get(key) or revenue_lifetime_names.get(key) or key,
-            })
-            net_profit = period_revenue - total_expense
-            roi_percent = ((period_revenue - total_expense) / total_expense * 100) if total_expense else 0.0
-            leads_in_period = int(lead_counts.get(key, 0))
-            cost_per_lead = (total_expense / leads_in_period) if leads_in_period else 0.0
-            lead_detail = latest_lead_details.get(key, {})
-            source = lead_detail.get("source") or ""
-            form_id = lead_detail.get("form_id") or ""
-
-            rows.append({
-                "campaign_id": meta.get("campaign_id") or key,
-                "campaign_name": meta.get("campaign_name") or key,
-                "form_id": form_id,
-                "source": source,
-                "subsource": (lead_detail.get("subsource") or "") if source == "Meta" else "",
-                "total_expense": total_expense,
-                "leads_in_period": leads_in_period,
-                "cost_per_lead": cost_per_lead,
-                "lifetime_revenue": lifetime_revenue,
-                "period_revenue": period_revenue,
-                "net_profit": net_profit,
-                "roi_percent": roi_percent,
-            })
-
-        return rows
-
-    # Aggregate expenses and revenues using Meta Ads as the canonical reference
-    expense_map, expense_fallback_names = get_campaign_expense_summary(filters)
-    revenue_period_map, revenue_period_fallbacks = get_surgery_revenue_summary(filters, lifetime=False)
-    revenue_lifetime_map, revenue_lifetime_fallbacks = get_surgery_revenue_summary(filters, lifetime=True)
-
-    all_canonical_ids: set[str] = set(expense_map.keys())
-    all_canonical_ids.update(revenue_period_map.keys())
-    all_canonical_ids.update(revenue_lifetime_map.keys())
-
-    if not all_canonical_ids:
+    base_rows = get_expense_base_rows(filters)
+    if not base_rows:
         return []
 
-    # Merge fallback names (used for display and secondary lookups)
-    all_fallback_names: dict[str, str] = {}
-    all_fallback_names.update(expense_fallback_names)
-    all_fallback_names.update(revenue_period_fallbacks)
-    all_fallback_names.update(revenue_lifetime_fallbacks)
+    meta_ad_ids = {row["ad_id"] for row in base_rows if row["source"] == "Meta" and row["ad_id"]}
+    google_campaigns = {row["campaign_name"] for row in base_rows if row["source"] == "Google Adword" and row["campaign_name"]}
 
-    # Fetch metadata keyed by canonical Meta Ads docname
-    meta_details = get_meta_ads_details(list(all_canonical_ids), all_fallback_names)
-    creation_dates = get_meta_lead_form_dates(all_canonical_ids, all_fallback_names)
-    sources = get_lead_sources_for_canonical_ids(all_canonical_ids, all_fallback_names, filters)
-    subsources = get_lead_subsources_for_canonical_ids(all_canonical_ids, all_fallback_names, filters)
+    meta_lead_counts = get_meta_lead_counts(meta_ad_ids, filters)
+    google_lead_counts = get_google_lead_counts(google_campaigns, filters)
+
+    meta_revenue = get_meta_surgery_revenue(meta_ad_ids, filters)
+    google_revenue = get_google_surgery_revenue(google_campaigns, filters)
 
     rows: list[dict] = []
-    for canonical_id in sorted(all_canonical_ids, key=lambda value: (all_fallback_names.get(value) or value)):
-        period_revenue = float(revenue_period_map.get(canonical_id, 0.0))
-        total_expense = float(expense_map.get(canonical_id, 0.0))
+    for row in base_rows:
+        if row["source"] == "Meta":
+            leads = int(meta_lead_counts.get(row["ad_id"], 0))
+            revenue = float(meta_revenue.get(row["ad_id"], 0.0))
+        else:
+            leads = int(google_lead_counts.get(row["campaign_name"], 0))
+            revenue = float(google_revenue.get(row["campaign_name"], 0.0))
 
-        # Skip rows that have neither expense nor revenue in the filtered range
-        if total_expense == 0 and period_revenue == 0:
-            continue
+        total_expense = float(row["total_expense"])
+        rows.append(
+            {
+                "campaign_name": row["campaign_name"],
+                "source": row["source"],
+                "ad_id": row["ad_id"] if row["source"] == "Meta" else "",
+                "total_expense": total_expense,
+                "leads_in_period": leads,
+                "surgery_revenue": revenue,
+                "cost_per_lead": (total_expense / leads) if leads else 0.0,
+            }
+        )
 
-        lifetime_revenue = float(revenue_lifetime_map.get(canonical_id, 0.0))
-        meta = meta_details.get(canonical_id, {
-            "ad_id": canonical_id,
-            "ads_name": all_fallback_names.get(canonical_id) or canonical_id,
-            "status": "",
-        })
+    return sorted(rows, key=lambda d: (d.get("campaign_name") or "", d.get("source") or "", d.get("ad_id") or ""))
 
-        display_name = meta.get("ads_name") or all_fallback_names.get(canonical_id) or canonical_id
-        status = meta.get("status") or ""
-        ad_created_date = creation_dates.get(canonical_id)
-        net_profit = period_revenue - total_expense
-        roi_percent = ((period_revenue - total_expense) / total_expense * 100) if total_expense else 0.0
 
-        rows.append({
-            "ad_id": meta.get("ad_id") or canonical_id,
-            "ad_display_name": display_name,
-            "ad_status": status,
-            "ad_created_date": ad_created_date,
-            "source": sources.get(canonical_id, ""),
-            "subsource": subsources.get(canonical_id, "") if sources.get(canonical_id, "") == "Meta" else "",
-            "total_expense": total_expense,
-            "lifetime_revenue": lifetime_revenue,
-            "period_revenue": period_revenue,
-            "net_profit": net_profit,
-            "roi_percent": roi_percent,
-            "details_button": _("Details"),
-        })
+def get_expense_base_rows(filters: Filters) -> list[dict]:
+    params = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+    }
+    clauses = [
+        "ce.date BETWEEN %(from_date)s AND %(to_date)s",
+        "ce.source IN ('Meta', 'Google Adword')",
+        "ce.campaign IS NOT NULL",
+        "TRIM(ce.campaign) != ''",
+    ]
+    campaign_filter = normalize_identifier(filters.get("campaign_name"))
+    if campaign_filter:
+        params["campaign_name_filter"] = f"%{campaign_filter}%"
+        clauses.append("TRIM(ce.campaign) LIKE %(campaign_name_filter)s")
+    source_filter = normalize_identifier(filters.get("source"))
+    if source_filter:
+        params["source_filter"] = source_filter
+        clauses.append("ce.source = %(source_filter)s")
 
-    return rows
+    where_clause = " AND ".join(clauses)
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            TRIM(ce.campaign) AS campaign_name,
+            TRIM(ce.source) AS source,
+            CASE
+                WHEN TRIM(ce.source) = 'Meta' THEN TRIM(COALESCE(ce.ad_id, ''))
+                ELSE ''
+            END AS ad_id,
+            COALESCE(SUM(
+                CASE
+                    WHEN ce.total_amount IS NOT NULL AND ce.total_amount != ''
+                    THEN CAST(ce.total_amount AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS total_expense
+        FROM `tabCampaign Expense` ce
+        WHERE {where_clause}
+        GROUP BY campaign_name, source, ad_id
+        ORDER BY campaign_name, source, ad_id
+        """,
+        params,
+        as_dict=True,
+    )
+    return [
+        {
+            "campaign_name": normalize_identifier(r.get("campaign_name")),
+            "source": normalize_identifier(r.get("source")),
+            "ad_id": normalize_identifier(r.get("ad_id")),
+            "total_expense": cast_to_float(r.get("total_expense")),
+        }
+        for r in rows
+    ]
+
+
+def get_meta_lead_counts(meta_ad_ids: set[str], filters: Filters) -> dict[str, int]:
+    ids = make_identifier_tuple(meta_ad_ids)
+    if not ids:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "ad_ids": ids,
+    }
+    query = """
+        SELECT
+            TRIM(l.meta_ad_id) AS ad_id,
+            COUNT(*) AS lead_count
+        FROM `tabLead` l
+        WHERE l.source = 'Meta'
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND TRIM(l.meta_ad_id) IN %(ad_ids)s
+          AND COALESCE(l.created_on, DATE(l.creation)) BETWEEN %(from_date)s AND %(to_date)s
+        GROUP BY ad_id
+    """
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
+    return {normalize_identifier(r.get("ad_id")): int(r.get("lead_count") or 0) for r in rows}
+
+
+def get_google_lead_counts(campaigns: set[str], filters: Filters) -> dict[str, int]:
+    names = make_identifier_tuple(campaigns)
+    if not names:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "campaign_names": names,
+    }
+    query = """
+        SELECT
+            TRIM(l.campaign_name) AS campaign_name,
+            COUNT(*) AS lead_count
+        FROM `tabLead` l
+        WHERE l.source = 'Google Adword'
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND TRIM(l.campaign_name) IN %(campaign_names)s
+          AND COALESCE(l.created_on, DATE(l.creation)) BETWEEN %(from_date)s AND %(to_date)s
+        GROUP BY campaign_name
+    """
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
+    return {normalize_identifier(r.get("campaign_name")): int(r.get("lead_count") or 0) for r in rows}
+
+
+def get_meta_surgery_revenue(meta_ad_ids: set[str], filters: Filters) -> dict[str, float]:
+    ids = make_identifier_tuple(meta_ad_ids)
+    if not ids:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "ad_ids": ids,
+    }
+    query = """
+        SELECT
+            TRIM(l.meta_ad_id) AS ad_id,
+            COALESCE(SUM(
+                CASE
+                    WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
+                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS revenue
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND l.source = 'Meta'
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND TRIM(l.meta_ad_id) IN %(ad_ids)s
+          AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+        GROUP BY ad_id
+    """
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
+    return {normalize_identifier(r.get("ad_id")): cast_to_float(r.get("revenue")) for r in rows}
+
+
+def get_google_surgery_revenue(campaigns: set[str], filters: Filters) -> dict[str, float]:
+    names = make_identifier_tuple(campaigns)
+    if not names:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "campaign_names": names,
+    }
+    query = """
+        SELECT
+            TRIM(l.campaign_name) AS campaign_name,
+            COALESCE(SUM(
+                CASE
+                    WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
+                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS revenue
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND l.source = 'Google Adword'
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND TRIM(l.campaign_name) IN %(campaign_names)s
+          AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+        GROUP BY campaign_name
+    """
+    query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
+    rows = frappe.db.sql(query, params, as_dict=True)
+    return {normalize_identifier(r.get("campaign_name")): cast_to_float(r.get("revenue")) for r in rows}
 
 
 def normalize_identifier(value: str | None) -> str:
