@@ -3,6 +3,7 @@
 
 frappe.query_reports["Ad Expense Report"] = {
   onload: async function (report) {
+    setupShowDetailHandler(report);
     updateSummary(report);
 
     // Update summary when filters change
@@ -18,7 +19,34 @@ frappe.query_reports["Ad Expense Report"] = {
   },
   
   refresh: function (report) {
+    setupShowDetailHandler(report);
     updateSummary(report);
+  },
+  formatter: function (value, row, column, data, default_formatter) {
+    const formatted = default_formatter(value, row, column, data);
+    if (column.fieldname !== "details_button") {
+      return formatted;
+    }
+
+    if (!data || data.is_total_row || data.__is_total_row) {
+      return "";
+    }
+
+    const encodedSource = encodeURIComponent(data.source || "");
+    const encodedCampaign = encodeURIComponent(data.campaign_name || "");
+    const encodedAdId = encodeURIComponent(data.ad_id || "");
+
+    return `
+      <button
+        type="button"
+        class="btn btn-xs btn-default ad-expense-show-detail"
+        data-source="${encodedSource}"
+        data-campaign-name="${encodedCampaign}"
+        data-ad-id="${encodedAdId}"
+      >
+        ${__("Show Detail")}
+      </button>
+    `;
   },
 
   filters: [
@@ -49,6 +77,39 @@ frappe.query_reports["Ad Expense Report"] = {
       options: ["", "Meta", "Google Adword"],
     },
   ],
+};
+
+const setupShowDetailHandler = function (report) {
+  const wrapper = report.page.wrapper;
+  wrapper.off("click.ad_expense_show_detail");
+  wrapper.on("click.ad_expense_show_detail", ".ad-expense-show-detail", function () {
+    const $button = $(this);
+    const source = decodeURIComponent($button.attr("data-source") || "");
+    const campaign_name = decodeURIComponent($button.attr("data-campaign-name") || "");
+    const ad_id = decodeURIComponent($button.attr("data-ad-id") || "");
+
+    frappe.call({
+      method:
+        "frappe_hfhg.frappe_hfhg.report.ad_expense_report.ad_expense_report.get_row_lifetime_details",
+      args: { source, campaign_name, ad_id },
+      freeze: true,
+      freeze_message: __("Fetching details..."),
+      callback: function (r) {
+        const details = r.message || {};
+        frappe.msgprint({
+          title: __("Lifetime Details"),
+          message: `
+            <div>
+              <p><strong>${__("Leads Generated")}:</strong> ${details.leads_created_lifetime || 0}</p>
+              <p><strong>${__("Booking Count")}:</strong> ${details.costings_created_lifetime || 0}</p>
+              <p><strong>${__("Surgery Count")}:</strong> ${details.surgeries_created_lifetime || 0}</p>
+            </div>
+          `,
+          indicator: "blue",
+        });
+      },
+    });
+  });
 };
 
 const updateSummary = function (report) {
