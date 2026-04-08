@@ -42,7 +42,73 @@ def get_columns(filters: Filters) -> list[dict]:
         {"label": _("Leads Generated"), "fieldtype": "Int", "fieldname": "leads_in_period", "width": 130},
         {"label": _("Surgery Revenue (₹)"), "fieldtype": "Float", "fieldname": "surgery_revenue", "width": 170, "precision": 2},
         {"label": _("Cost Per Lead (₹)"), "fieldtype": "Float", "fieldname": "cost_per_lead", "width": 150, "precision": 2},
+        {"label": _("Details"), "fieldtype": "Data", "fieldname": "details_button", "width": 130},
     ]
+
+
+@frappe.whitelist()
+def get_row_lifetime_details(source: str | None = None, campaign_name: str | None = None, ad_id: str | None = None) -> dict:
+    normalized_source = normalize_identifier(source)
+    normalized_campaign = normalize_identifier(campaign_name)
+    normalized_ad_id = normalize_identifier(ad_id)
+    source_key = normalized_source.casefold()
+
+    if source_key == "meta":
+        if not normalized_ad_id:
+            return {
+                "leads_created_lifetime": 0,
+                "costings_created_lifetime": 0,
+                "surgeries_created_lifetime": 0,
+            }
+        # Meta: match by meta_ad_id only (ignore Lead.source)
+        where_clause = (
+            "REPLACE(LOWER(TRIM(COALESCE(l.meta_ad_id, ''))), '.0', '') = "
+            "REPLACE(LOWER(TRIM(%(match_value)s)), '.0', '')"
+        )
+        params: dict[str, object] = {"match_value": normalized_ad_id}
+    elif source_key == "google adword":
+        if not normalized_campaign:
+            return {
+                "leads_created_lifetime": 0,
+                "costings_created_lifetime": 0,
+                "surgeries_created_lifetime": 0,
+            }
+        # Google Adword: match by campaign_name only (ignore Lead.source)
+        where_clause = "LOWER(TRIM(COALESCE(l.campaign_name, ''))) = LOWER(TRIM(%(match_value)s))"
+        params = {"match_value": normalized_campaign}
+    else:
+        frappe.throw(_("Unsupported source for lifetime details"))
+
+    leads_query = f"""
+        SELECT COUNT(*) AS total
+        FROM `tabLead` l
+        WHERE {where_clause}
+    """
+    leads_created_lifetime = int((frappe.db.sql(leads_query, params, as_dict=True) or [{}])[0].get("total") or 0)
+
+    costings_query = f"""
+        SELECT COUNT(DISTINCT c.name) AS total
+        FROM `tabCosting` c
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE {where_clause}
+    """
+    costings_created_lifetime = int((frappe.db.sql(costings_query, params, as_dict=True) or [{}])[0].get("total") or 0)
+
+    surgeries_query = f"""
+        SELECT COUNT(DISTINCT s.name) AS total
+        FROM `tabSurgery` s
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE {where_clause}
+          AND IFNULL(s.pending_amount, 0) = 0
+    """
+    surgeries_created_lifetime = int((frappe.db.sql(surgeries_query, params, as_dict=True) or [{}])[0].get("total") or 0)
+
+    return {
+        "leads_created_lifetime": leads_created_lifetime,
+        "costings_created_lifetime": costings_created_lifetime,
+        "surgeries_created_lifetime": surgeries_created_lifetime,
+    }
 
 def get_data(filters: Filters) -> list[dict]:
     base_rows = get_expense_base_rows(filters)
