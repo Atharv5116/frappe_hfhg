@@ -59,6 +59,8 @@ def get_row_lifetime_details(source: str | None = None, campaign_name: str | Non
                 "leads_created_lifetime": 0,
                 "costings_created_lifetime": 0,
                 "surgeries_created_lifetime": 0,
+                "lifetime_expense": 0.0,
+                "lifetime_revenue": 0.0,
             }
         # Meta: match by meta_ad_id only (ignore Lead.source)
         where_clause = (
@@ -66,16 +68,42 @@ def get_row_lifetime_details(source: str | None = None, campaign_name: str | Non
             "REPLACE(LOWER(TRIM(%(match_value)s)), '.0', '')"
         )
         params: dict[str, object] = {"match_value": normalized_ad_id}
+        expense_query = """
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN ce.total_amount IS NOT NULL AND ce.total_amount != ''
+                    THEN CAST(ce.total_amount AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS total
+            FROM `tabCampaign Expense` ce
+            WHERE LOWER(TRIM(COALESCE(ce.source, ''))) = 'meta'
+              AND REPLACE(LOWER(TRIM(COALESCE(ce.ad_id, ''))), '.0', '') = REPLACE(LOWER(TRIM(%(match_value)s)), '.0', '')
+        """
     elif source_key == "google adword":
         if not normalized_campaign:
             return {
                 "leads_created_lifetime": 0,
                 "costings_created_lifetime": 0,
                 "surgeries_created_lifetime": 0,
+                "lifetime_expense": 0.0,
+                "lifetime_revenue": 0.0,
             }
         # Google Adword: match by campaign_name only (ignore Lead.source)
         where_clause = "LOWER(TRIM(COALESCE(l.campaign_name, ''))) = LOWER(TRIM(%(match_value)s))"
         params = {"match_value": normalized_campaign}
+        expense_query = """
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN ce.total_amount IS NOT NULL AND ce.total_amount != ''
+                    THEN CAST(ce.total_amount AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS total
+            FROM `tabCampaign Expense` ce
+            WHERE LOWER(TRIM(COALESCE(ce.source, ''))) = 'google adword'
+              AND LOWER(TRIM(COALESCE(ce.campaign, ''))) = LOWER(TRIM(%(match_value)s))
+        """
     else:
         frappe.throw(_("Unsupported source for lifetime details"))
 
@@ -104,10 +132,36 @@ def get_row_lifetime_details(source: str | None = None, campaign_name: str | Non
     """
     surgeries_created_lifetime = int((frappe.db.sql(surgeries_query, params, as_dict=True) or [{}])[0].get("total") or 0)
 
+    lifetime_expense = cast_to_float((frappe.db.sql(expense_query, params, as_dict=True) or [{}])[0].get("total"))
+
+    lifetime_revenue_query = f"""
+        SELECT
+            COALESCE(SUM(
+                CASE
+                    WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
+                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
+                    ELSE 0
+                END
+            ), 0) AS total
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND {where_clause}
+    """
+    lifetime_revenue = cast_to_float((frappe.db.sql(lifetime_revenue_query, params, as_dict=True) or [{}])[0].get("total"))
+
     return {
         "leads_created_lifetime": leads_created_lifetime,
         "costings_created_lifetime": costings_created_lifetime,
         "surgeries_created_lifetime": surgeries_created_lifetime,
+        "lifetime_expense": lifetime_expense,
+        "lifetime_revenue": lifetime_revenue,
     }
 
 def get_data(filters: Filters) -> list[dict]:
@@ -170,6 +224,13 @@ def get_expense_base_rows(filters: Filters) -> list[dict]:
     if source_filter:
         params["source_filter"] = source_filter
         clauses.append("ce.source = %(source_filter)s")
+    ad_id_filter = normalize_identifier(filters.get("ad_id"))
+    if ad_id_filter:
+        params["ad_id_filter"] = ad_id_filter
+        clauses.append(
+            "REPLACE(LOWER(TRIM(COALESCE(ce.ad_id, ''))), '.0', '') = "
+            "REPLACE(LOWER(TRIM(%(ad_id_filter)s)), '.0', '')"
+        )
 
     where_clause = " AND ".join(clauses)
     rows = frappe.db.sql(
