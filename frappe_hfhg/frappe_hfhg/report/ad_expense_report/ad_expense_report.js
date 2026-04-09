@@ -76,6 +76,11 @@ frappe.query_reports["Ad Expense Report"] = {
       fieldtype: "Select",
       options: ["", "Meta", "Google Adword"],
     },
+    {
+      fieldname: "ad_id",
+      label: __("Ad ID"),
+      fieldtype: "Data",
+    },
   ],
 };
 
@@ -96,6 +101,8 @@ const setupShowDetailHandler = function (report) {
       freeze_message: __("Fetching details..."),
       callback: function (r) {
         const details = r.message || {};
+        const lifetimeExpense = details.lifetime_expense || 0;
+        const lifetimeRevenue = details.lifetime_revenue || 0;
         frappe.msgprint({
           title: __("Lifetime Details"),
           message: `
@@ -103,6 +110,8 @@ const setupShowDetailHandler = function (report) {
               <p><strong>${__("Leads Generated")}:</strong> ${details.leads_created_lifetime || 0}</p>
               <p><strong>${__("Booking Count")}:</strong> ${details.costings_created_lifetime || 0}</p>
               <p><strong>${__("Surgery Count")}:</strong> ${details.surgeries_created_lifetime || 0}</p>
+              <p><strong>${__("Lifetime Expense")}:</strong> ₹ ${frappe.format(lifetimeExpense, {fieldtype: 'Float', precision: 2})}</p>
+              <p><strong>${__("Lifetime Revenue")}:</strong> ₹ ${frappe.format(lifetimeRevenue, {fieldtype: 'Float', precision: 2})}</p>
             </div>
           `,
           indicator: "blue",
