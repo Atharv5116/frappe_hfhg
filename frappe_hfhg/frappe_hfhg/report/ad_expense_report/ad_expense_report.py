@@ -134,7 +134,7 @@ def get_row_lifetime_details(source: str | None = None, campaign_name: str | Non
 
     lifetime_expense = cast_to_float((frappe.db.sql(expense_query, params, as_dict=True) or [{}])[0].get("total"))
 
-    lifetime_revenue_query = f"""
+    lifetime_revenue_surgery_query = f"""
         SELECT
             COALESCE(SUM(
                 CASE
@@ -154,7 +154,48 @@ def get_row_lifetime_details(source: str | None = None, campaign_name: str | Non
           AND IFNULL(l.status, '') != 'Duplicate Lead'
           AND {where_clause}
     """
-    lifetime_revenue = cast_to_float((frappe.db.sql(lifetime_revenue_query, params, as_dict=True) or [{}])[0].get("total"))
+    surgery_revenue_total = cast_to_float(
+        (frappe.db.sql(lifetime_revenue_surgery_query, params, as_dict=True) or [{}])[0].get("total")
+    )
+
+    distinct_costings_query = f"""
+        SELECT DISTINCT c.name AS costing_name
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND {where_clause}
+    """
+    costing_names = [
+        r[0]
+        for r in (frappe.db.sql(distinct_costings_query, params) or [])
+        if r and r[0]
+    ]
+    costing_revenue_total = 0.0
+    if costing_names:
+        costing_params = {"costing_names": tuple(costing_names)}
+        costing_revenue_total = cast_to_float(
+            (frappe.db.sql(
+                f"""
+                SELECT COALESCE(SUM({_sql_line_amount("pc")}), 0) AS total
+                FROM `tabPayment` pc
+                WHERE pc.docstatus < 2
+                  AND pc.type = 'Payment'
+                  AND pc.payment_type = 'Costing'
+                  AND pc.patient IN %(costing_names)s
+                """,
+                costing_params,
+                as_dict=True,
+            )
+            or [{}])[0].get("total")
+        )
+
+    lifetime_revenue = surgery_revenue_total + costing_revenue_total
 
     return {
         "leads_created_lifetime": leads_created_lifetime,
@@ -176,8 +217,14 @@ def get_data(filters: Filters) -> list[dict]:
     google_lead_counts = get_google_lead_counts(google_campaigns, filters)
     meta_subsources = get_meta_subsources(meta_ad_ids, filters)
 
-    meta_revenue = get_meta_surgery_revenue(meta_ad_ids, filters)
-    google_revenue = get_google_surgery_revenue(google_campaigns, filters)
+    meta_revenue = _merge_revenue_dicts(
+        get_meta_surgery_revenue(meta_ad_ids, filters),
+        get_meta_surgery_revenue_costing_addon(meta_ad_ids, filters),
+    )
+    google_revenue = _merge_revenue_dicts(
+        get_google_surgery_revenue(google_campaigns, filters),
+        get_google_surgery_revenue_costing_addon(google_campaigns, filters),
+    )
 
     rows: list[dict] = []
     for row in base_rows:
@@ -316,6 +363,7 @@ def get_google_lead_counts(campaigns: set[str], filters: Filters) -> dict[str, i
 
 
 def get_meta_surgery_revenue(meta_ad_ids: set[str], filters: Filters) -> dict[str, float]:
+    """Surgery-type payments only (original report logic)."""
     ids = make_identifier_tuple(meta_ad_ids)
     if not ids:
         return {}
@@ -350,6 +398,49 @@ def get_meta_surgery_revenue(meta_ad_ids: set[str], filters: Filters) -> dict[st
     query, params = apply_marketing_head_center_filter(query, params, center_field="center", table_alias="l")
     rows = frappe.db.sql(query, params, as_dict=True)
     return {normalize_identifier(r.get("ad_id")): cast_to_float(r.get("revenue")) for r in rows}
+
+
+def get_meta_surgery_revenue_costing_addon(meta_ad_ids: set[str], filters: Filters) -> dict[str, float]:
+    """All Costing-type payments for distinct costings linked to eligible surgery payments (same eligibility as main Meta revenue)."""
+    ids = make_identifier_tuple(meta_ad_ids)
+    if not ids:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "ad_ids": ids,
+    }
+    distinct_inner = """
+        SELECT DISTINCT
+            TRIM(l.meta_ad_id) AS ad_id,
+            c.name AS costing_name
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND TRIM(l.meta_ad_id) IN %(ad_ids)s
+          AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+    """
+    part_b = f"""
+        SELECT e.ad_id, COALESCE(SUM({_sql_line_amount("pc")}), 0) AS revenue
+        FROM ({distinct_inner}) AS e
+        INNER JOIN `tabPayment` pc ON pc.patient = e.costing_name
+          AND pc.docstatus < 2
+          AND pc.type = 'Payment'
+          AND pc.payment_type = 'Costing'
+        GROUP BY e.ad_id
+    """
+    rows = frappe.db.sql(part_b, params, as_dict=True)
+    return {
+        normalize_identifier(r.get("ad_id")): cast_to_float(r.get("revenue"))
+        for r in rows
+        if normalize_identifier(r.get("ad_id"))
+    }
 
 
 def get_meta_subsources(meta_ad_ids: set[str], filters: Filters) -> dict[str, str]:
@@ -391,6 +482,7 @@ def get_meta_subsources(meta_ad_ids: set[str], filters: Filters) -> dict[str, st
 
 
 def get_google_surgery_revenue(campaigns: set[str], filters: Filters) -> dict[str, float]:
+    """Surgery-type payments only (original report logic)."""
     names = make_identifier_tuple(campaigns)
     if not names:
         return {}
@@ -428,6 +520,50 @@ def get_google_surgery_revenue(campaigns: set[str], filters: Filters) -> dict[st
     return {normalize_identifier(r.get("campaign_name")): cast_to_float(r.get("revenue")) for r in rows}
 
 
+def get_google_surgery_revenue_costing_addon(campaigns: set[str], filters: Filters) -> dict[str, float]:
+    """All Costing-type payments for distinct costings linked to eligible surgery payments (Google)."""
+    names = make_identifier_tuple(campaigns)
+    if not names:
+        return {}
+    params: dict[str, object] = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+        "campaign_names": names,
+    }
+    distinct_inner = """
+        SELECT DISTINCT
+            TRIM(l.campaign_name) AS campaign_name,
+            c.name AS costing_name
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND l.source = 'Google Adword'
+          AND IFNULL(l.status, '') != 'Duplicate Lead'
+          AND TRIM(l.campaign_name) IN %(campaign_names)s
+          AND p.transaction_date BETWEEN %(from_date)s AND %(to_date)s
+    """
+    part_b = f"""
+        SELECT e.campaign_name, COALESCE(SUM({_sql_line_amount("pc")}), 0) AS revenue
+        FROM ({distinct_inner}) AS e
+        INNER JOIN `tabPayment` pc ON pc.patient = e.costing_name
+          AND pc.docstatus < 2
+          AND pc.type = 'Payment'
+          AND pc.payment_type = 'Costing'
+        GROUP BY e.campaign_name
+    """
+    rows = frappe.db.sql(part_b, params, as_dict=True)
+    return {
+        normalize_identifier(r.get("campaign_name")): cast_to_float(r.get("revenue"))
+        for r in rows
+        if normalize_identifier(r.get("campaign_name"))
+    }
+
+
 def normalize_identifier(value: str | None) -> str:
     return str(value).strip() if value else ""
 
@@ -442,6 +578,28 @@ def cast_to_float(value) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _sql_line_amount(alias: str) -> str:
+    a = alias
+    return f"""CASE
+                WHEN {a}.total_amount_received IS NOT NULL AND TRIM(COALESCE({a}.total_amount_received, '')) != ''
+                THEN CAST({a}.total_amount_received AS DECIMAL(18,2))
+                WHEN {a}.total_amount IS NOT NULL
+                THEN CAST({a}.total_amount AS DECIMAL(18,2))
+                ELSE CAST(COALESCE({a}.without_gst_amount, 0) AS DECIMAL(18,2))
+                     + CAST(
+                         CASE WHEN IFNULL({a}.with_gst_check, 0) = 1
+                         THEN COALESCE({a}.with_gst_amount, 0) ELSE 0 END
+                         AS DECIMAL(18,2))
+            END"""
+
+
+def _merge_revenue_dicts(
+    surgery_map: dict[str, float], costing_map: dict[str, float]
+) -> dict[str, float]:
+    keys = set(surgery_map) | set(costing_map)
+    return {k: surgery_map.get(k, 0.0) + costing_map.get(k, 0.0) for k in keys}
 
 
 def get_revenue_ad_identifiers(filters: Filters) -> tuple[list[str], dict[str, str]]:
@@ -711,7 +869,17 @@ def get_surgery_revenue_summary_by_form(filters: Filters, lifetime: bool) -> tup
     if filters.get("campaign_name"):
         params["campaign_name_filter"] = f"%{normalize_identifier(filters.get('campaign_name'))}%"
 
-    revenue_query = (
+    form_where_extra = (
+        (" AND l.source = %(source)s" if filters.get("source") else "")
+        + (" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + (
+            " AND (TRIM(mc.campaign_name) LIKE %(campaign_name_filter)s OR TRIM(l.campaign_name) LIKE %(campaign_name_filter)s)"
+            if filters.get("campaign_name")
+            else ""
+        )
+    )
+
+    eligible_inner = (
         f"""
         SELECT
             TRIM(l.form_id) AS form_key,
@@ -719,13 +887,8 @@ def get_surgery_revenue_summary_by_form(filters: Filters, lifetime: bool) -> tup
             mlf.form_name AS form_name,
             mlf.campaign AS campaign_id,
             mc.campaign_name AS campaign_name,
-            COALESCE(SUM(
-                CASE
-                    WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
-                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
-                    ELSE 0
-                END
-            ), 0) AS revenue
+            c.name AS costing_name,
+            """ + _sql_line_amount("p") + """ AS line_amt
         FROM `tabPayment` p
         INNER JOIN `tabSurgery` s ON s.name = p.patient
         INNER JOIN `tabCosting` c ON s.patient = c.name
@@ -740,30 +903,95 @@ def get_surgery_revenue_summary_by_form(filters: Filters, lifetime: bool) -> tup
           AND l.form_id != ''
           {date_condition}
         """
-        + (" AND l.source = %(source)s" if filters.get("source") else "")
-        + (" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
-        + (" AND (TRIM(mc.campaign_name) LIKE %(campaign_name_filter)s OR TRIM(l.campaign_name) LIKE %(campaign_name_filter)s)" if filters.get("campaign_name") else "")
-        + """
+        + form_where_extra
+    )
+    eligible_inner, params = apply_marketing_head_center_filter(
+        eligible_inner, params, center_field="center", table_alias="l"
+    )
+    part_a = f"""
+        SELECT
+            form_key,
+            form_id,
+            form_name,
+            campaign_id,
+            campaign_name,
+            COALESCE(SUM(line_amt), 0) AS revenue
+        FROM ({eligible_inner}) AS _t
         GROUP BY form_key, form_id, form_name, campaign_id, campaign_name
         HAVING form_key IS NOT NULL AND form_key != ''
+    """
+    distinct_inner = (
+        f"""
+        SELECT DISTINCT
+            TRIM(l.form_id) AS form_key,
+            mlf.form_id AS form_id,
+            mlf.form_name AS form_name,
+            mlf.campaign AS campaign_id,
+            mc.campaign_name AS campaign_name,
+            c.name AS costing_name
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        LEFT JOIN `tabMeta Lead Form` mlf ON mlf.name = l.form_id
+        LEFT JOIN `tabMeta Campaign` mc ON mc.name = mlf.campaign
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          AND l.form_id IS NOT NULL
+          AND l.form_id != ''
+          {date_condition}
         """
+        + form_where_extra
     )
-    revenue_query, params = apply_marketing_head_center_filter(revenue_query, params, center_field="center", table_alias="l")
-    revenue_rows = frappe.db.sql(revenue_query, params, as_dict=True)
+    distinct_inner, params = apply_marketing_head_center_filter(
+        distinct_inner, params, center_field="center", table_alias="l"
+    )
+    part_b = f"""
+        SELECT
+            e.form_key,
+            e.form_id,
+            e.form_name,
+            e.campaign_id,
+            e.campaign_name,
+            COALESCE(SUM({_sql_line_amount("pc")}), 0) AS revenue
+        FROM ({distinct_inner}) AS e
+        INNER JOIN `tabPayment` pc ON pc.patient = e.costing_name
+          AND pc.docstatus < 2
+          AND pc.type = 'Payment'
+          AND pc.payment_type = 'Costing'
+        GROUP BY e.form_key, e.form_id, e.form_name, e.campaign_id, e.campaign_name
+        HAVING e.form_key IS NOT NULL AND e.form_key != ''
+    """
+    surgery_rows = frappe.db.sql(part_a, params, as_dict=True)
+    costing_rows = frappe.db.sql(part_b, params, as_dict=True)
 
     revenue_map: dict[str, float] = {}
     details_map: dict[str, dict] = {}
-    for row in revenue_rows:
+    for row in surgery_rows:
         key = normalize_identifier(row.get("form_key"))
         if not key:
             continue
-        revenue_map[key] = cast_to_float(row.get("revenue"))
+        revenue_map[key] = revenue_map.get(key, 0.0) + cast_to_float(row.get("revenue"))
         details_map[key] = {
             "form_id": row.get("form_id") or key,
             "form_name": row.get("form_name") or key,
             "campaign_id": row.get("campaign_id") or "",
             "campaign_name": row.get("campaign_name") or "",
         }
+    for row in costing_rows:
+        key = normalize_identifier(row.get("form_key"))
+        if not key:
+            continue
+        revenue_map[key] = revenue_map.get(key, 0.0) + cast_to_float(row.get("revenue"))
+        if key not in details_map:
+            details_map[key] = {
+                "form_id": row.get("form_id") or key,
+                "form_name": row.get("form_name") or key,
+                "campaign_id": row.get("campaign_id") or "",
+                "campaign_name": row.get("campaign_name") or "",
+            }
 
     return revenue_map, details_map
 
@@ -878,18 +1106,23 @@ def get_surgery_revenue_summary_by_campaign(filters: Filters, lifetime: bool) ->
     if filters.get("campaign_name"):
         params["campaign_name_filter"] = f"%{normalize_identifier(filters.get('campaign_name'))}%"
 
-    revenue_query = (
+    campaign_where_extra = (
+        (" AND l.source = %(source)s" if filters.get("source") else "")
+        + (" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
+        + (
+            " AND (TRIM(mc.campaign_name) LIKE %(campaign_name_filter)s OR TRIM(l.campaign_name) LIKE %(campaign_name_filter)s)"
+            if filters.get("campaign_name")
+            else ""
+        )
+    )
+
+    eligible_inner = (
         f"""
         SELECT
             COALESCE(mlf.campaign, TRIM(l.campaign_name)) AS campaign_key,
             COALESCE(mc.campaign_name, TRIM(l.campaign_name)) AS campaign_name,
-            COALESCE(SUM(
-                CASE
-                    WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
-                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
-                    ELSE 0
-                END
-            ), 0) AS revenue
+            c.name AS costing_name,
+            """ + _sql_line_amount("p") + """ AS line_amt
         FROM `tabPayment` p
         INNER JOIN `tabSurgery` s ON s.name = p.patient
         INNER JOIN `tabCosting` c ON s.patient = c.name
@@ -902,26 +1135,76 @@ def get_surgery_revenue_summary_by_campaign(filters: Filters, lifetime: bool) ->
           AND IFNULL(s.pending_amount, 0) = 0
           {date_condition}
         """
-        + (" AND l.source = %(source)s" if filters.get("source") else "")
-        + (" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
-        + (" AND (TRIM(mc.campaign_name) LIKE %(campaign_name_filter)s OR TRIM(l.campaign_name) LIKE %(campaign_name_filter)s)" if filters.get("campaign_name") else "")
-        + """
+        + campaign_where_extra
+    )
+    eligible_inner, params = apply_marketing_head_center_filter(
+        eligible_inner, params, center_field="center", table_alias="l"
+    )
+    part_a = f"""
+        SELECT
+            campaign_key,
+            campaign_name,
+            COALESCE(SUM(line_amt), 0) AS revenue
+        FROM ({eligible_inner}) AS _t
         GROUP BY campaign_key, campaign_name
         HAVING campaign_key IS NOT NULL AND campaign_key != ''
+    """
+    distinct_inner = (
+        f"""
+        SELECT DISTINCT
+            COALESCE(mlf.campaign, TRIM(l.campaign_name)) AS campaign_key,
+            COALESCE(mc.campaign_name, TRIM(l.campaign_name)) AS campaign_name,
+            c.name AS costing_name
+        FROM `tabPayment` p
+        INNER JOIN `tabSurgery` s ON s.name = p.patient
+        INNER JOIN `tabCosting` c ON s.patient = c.name
+        INNER JOIN `tabLead` l ON c.patient = l.name
+        LEFT JOIN `tabMeta Lead Form` mlf ON mlf.name = l.form_id
+        LEFT JOIN `tabMeta Campaign` mc ON mc.name = mlf.campaign
+        WHERE p.docstatus < 2
+          AND p.type = 'Payment'
+          AND p.payment_type = 'Surgery'
+          AND IFNULL(s.pending_amount, 0) = 0
+          {date_condition}
         """
+        + campaign_where_extra
     )
-    revenue_query, params = apply_marketing_head_center_filter(revenue_query, params, center_field="center", table_alias="l")
-    revenue_rows = frappe.db.sql(revenue_query, params, as_dict=True)
+    distinct_inner, params = apply_marketing_head_center_filter(
+        distinct_inner, params, center_field="center", table_alias="l"
+    )
+    part_b = f"""
+        SELECT
+            e.campaign_key,
+            e.campaign_name,
+            COALESCE(SUM({_sql_line_amount("pc")}), 0) AS revenue
+        FROM ({distinct_inner}) AS e
+        INNER JOIN `tabPayment` pc ON pc.patient = e.costing_name
+          AND pc.docstatus < 2
+          AND pc.type = 'Payment'
+          AND pc.payment_type = 'Costing'
+        GROUP BY e.campaign_key, e.campaign_name
+        HAVING e.campaign_key IS NOT NULL AND e.campaign_key != ''
+    """
+    surgery_rows = frappe.db.sql(part_a, params, as_dict=True)
+    costing_rows = frappe.db.sql(part_b, params, as_dict=True)
 
     revenue_map: dict[str, float] = {}
     name_map: dict[str, str] = {}
-    for row in revenue_rows:
+    for row in surgery_rows:
         key = normalize_identifier(row.get("campaign_key"))
         if not key:
             continue
-        revenue_map[key] = cast_to_float(row.get("revenue"))
+        revenue_map[key] = revenue_map.get(key, 0.0) + cast_to_float(row.get("revenue"))
         cname = normalize_identifier(row.get("campaign_name"))
         if cname:
+            name_map[key] = cname
+    for row in costing_rows:
+        key = normalize_identifier(row.get("campaign_key"))
+        if not key:
+            continue
+        revenue_map[key] = revenue_map.get(key, 0.0) + cast_to_float(row.get("revenue"))
+        cname = normalize_identifier(row.get("campaign_name"))
+        if cname and key not in name_map:
             name_map[key] = cname
 
     return revenue_map, name_map
@@ -1153,9 +1436,7 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
     if filters.get("campaign_name"):
         params["campaign_name_filter"] = f"%{normalize_identifier(filters.get('campaign_name'))}%"
 
-    revenue_query = (
-        f"""
-        SELECT 
+    canonical_select = f"""
             CASE
                 WHEN ma_by_name.name IS NOT NULL THEN ma_by_name.name
                 WHEN ma_by_ads_unique.single_meta_id IS NOT NULL THEN ma_by_ads_unique.single_meta_id
@@ -1168,14 +1449,9 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
                     ELSE NULL
                 END,
                 TRIM(l.ad_name)
-            ) AS display_name,
-            COALESCE(SUM(
-                CASE 
-                    WHEN p.total_amount_received IS NOT NULL AND p.total_amount_received != ''
-                    THEN CAST(p.total_amount_received AS DECIMAL(18,2))
-                    ELSE 0
-                END
-            ), 0) AS revenue
+            ) AS display_name"""
+
+    ad_summary_from = f"""
         FROM `tabPayment` p
         INNER JOIN `tabSurgery` s ON s.name = p.patient
         INNER JOIN `tabCosting` c ON s.patient = c.name
@@ -1190,27 +1466,73 @@ def get_surgery_revenue_summary(filters: Filters, lifetime: bool) -> tuple[dict[
           AND IFNULL(s.pending_amount, 0) = 0
           {date_condition}
         """
-        + (f" AND l.source = %(source)s" if filters.get("source") else "")
-        + (f" AND l.subsource = %(subsource)s" if filters.get("subsource") else "")
-        + (f" AND TRIM(l.campaign_name) LIKE %(campaign_name_filter)s" if filters.get("campaign_name") else "")
-        + """
+    ad_summary_from += f" AND l.source = %(source)s" if filters.get("source") else ""
+    ad_summary_from += f" AND l.subsource = %(subsource)s" if filters.get("subsource") else ""
+    ad_summary_from += (
+        f" AND TRIM(l.campaign_name) LIKE %(campaign_name_filter)s" if filters.get("campaign_name") else ""
+    )
+
+    eligible_inner = f"""
+        SELECT
+            {canonical_select},
+            c.name AS costing_name,
+            """ + _sql_line_amount("p") + """ AS line_amt
+        """ + ad_summary_from
+    eligible_inner, params = apply_marketing_head_center_filter(
+        eligible_inner, params, center_field="center", table_alias="l"
+    )
+    part_a = f"""
+        SELECT
+            canonical_id,
+            display_name,
+            COALESCE(SUM(line_amt), 0) AS revenue
+        FROM ({eligible_inner}) AS _t
         GROUP BY canonical_id, display_name
         HAVING canonical_id IS NOT NULL AND canonical_id != ''
-        """
+    """
+    distinct_inner = f"""
+        SELECT DISTINCT
+            {canonical_select},
+            c.name AS costing_name
+        """ + ad_summary_from
+    distinct_inner, params = apply_marketing_head_center_filter(
+        distinct_inner, params, center_field="center", table_alias="l"
     )
-    revenue_query, params = apply_marketing_head_center_filter(revenue_query, params, center_field="center", table_alias="l")
-    revenue_rows = frappe.db.sql(revenue_query, params, as_dict=True)
+    part_b = f"""
+        SELECT
+            e.canonical_id,
+            e.display_name,
+            COALESCE(SUM({_sql_line_amount("pc")}), 0) AS revenue
+        FROM ({distinct_inner}) AS e
+        INNER JOIN `tabPayment` pc ON pc.patient = e.costing_name
+          AND pc.docstatus < 2
+          AND pc.type = 'Payment'
+          AND pc.payment_type = 'Costing'
+        GROUP BY e.canonical_id, e.display_name
+        HAVING e.canonical_id IS NOT NULL AND e.canonical_id != ''
+    """
+    surgery_rows = frappe.db.sql(part_a, params, as_dict=True)
+    costing_rows = frappe.db.sql(part_b, params, as_dict=True)
 
     revenue_map: dict[str, float] = {}
     fallback_names: dict[str, str] = {}
 
-    for row in revenue_rows:
+    for row in surgery_rows:
         canonical_id = normalize_identifier(row.get("canonical_id"))
         if not canonical_id:
             continue
-        revenue_map[canonical_id] = cast_to_float(row.get("revenue"))
+        revenue_map[canonical_id] = revenue_map.get(canonical_id, 0.0) + cast_to_float(row.get("revenue"))
         display_name = normalize_identifier(row.get("display_name"))
         if display_name:
+            fallback_names[canonical_id] = display_name
+
+    for row in costing_rows:
+        canonical_id = normalize_identifier(row.get("canonical_id"))
+        if not canonical_id:
+            continue
+        revenue_map[canonical_id] = revenue_map.get(canonical_id, 0.0) + cast_to_float(row.get("revenue"))
+        display_name = normalize_identifier(row.get("display_name"))
+        if display_name and canonical_id not in fallback_names:
             fallback_names[canonical_id] = display_name
 
     return revenue_map, fallback_names
