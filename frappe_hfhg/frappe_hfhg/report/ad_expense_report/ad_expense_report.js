@@ -73,8 +73,8 @@ frappe.query_reports["Ad Expense Report"] = {
     {
       fieldname: "source",
       label: __("Source"),
-      fieldtype: "Select",
-      options: ["", "Meta", "Google Adword"],
+      fieldtype: "Link",
+      options: "Source",
     },
     {
       fieldname: "ad_id",
