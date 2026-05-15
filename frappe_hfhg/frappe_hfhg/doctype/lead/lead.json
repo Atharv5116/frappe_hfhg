@@ -53,6 +53,7 @@
   "alternative_number_copy",
   "ht_sessions",
   "active_inactive_status",
+  "meta_ad_id",
   "section_break_cwdq",
   "column_break_yyur",
   "select_hair_loss_problem_type",
@@ -290,6 +291,11 @@
    "label": "Active / Inactive Status",
    "options": "Active\nInactive",
    "read_only": 1
+  },
+  {
+   "fieldname": "meta_ad_id",
+   "fieldtype": "Data",
+   "label": "Meta Ad ID"
   },
   {
    "default": "1",

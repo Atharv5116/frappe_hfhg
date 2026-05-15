@@ -3,10 +3,9 @@
 
 frappe.query_reports["Ad Expense Report"] = {
   onload: async function (report) {
+    setupShowDetailHandler(report);
     updateSummary(report);
-    
-    setupAdDetailsButton(report);
-    
+
     // Update summary when filters change
     report.filters.forEach(function (filter) {
       let original_on_change = filter.df.onchange;
@@ -20,28 +19,36 @@ frappe.query_reports["Ad Expense Report"] = {
   },
   
   refresh: function (report) {
+    setupShowDetailHandler(report);
     updateSummary(report);
   },
-  
   formatter: function (value, row, column, data, default_formatter) {
-    if (column.fieldname === "details_button") {
-      const isTotalRow = data && (data.is_total_row || data.__is_total_row || data.ad_id === __("Total"));
-      const adId = (data && data.ad_id) || "";
-      if (!adId || isTotalRow) {
-        return "";
-      }
-      const adLabel = (data && data.ad_display_name) || adId;
-      const adIdAttr = frappe.utils.escape_html(adId || "");
-      const adLabelAttr = frappe.utils.escape_html(adLabel || "");
-      return `
-        <button type="button" class="btn btn-xs btn-primary ad-details-btn" data-ad-id="${adIdAttr}" data-ad-label="${adLabelAttr}">
-          ${__("Details")}
-        </button>
-      `;
+    const formatted = default_formatter(value, row, column, data);
+    if (column.fieldname !== "details_button") {
+      return formatted;
     }
-    return default_formatter(value, row, column, data);
+
+    if (!data || data.is_total_row || data.__is_total_row) {
+      return "";
+    }
+
+    const encodedSource = encodeURIComponent(data.source || "");
+    const encodedCampaign = encodeURIComponent(data.campaign_name || "");
+    const encodedAdId = encodeURIComponent(data.ad_id || "");
+
+    return `
+      <button
+        type="button"
+        class="btn btn-xs btn-default ad-expense-show-detail"
+        data-source="${encodedSource}"
+        data-campaign-name="${encodedCampaign}"
+        data-ad-id="${encodedAdId}"
+      >
+        ${__("Show Detail")}
+      </button>
+    `;
   },
-  
+
   filters: [
     {
       fieldname: "from_date",
@@ -70,12 +77,48 @@ frappe.query_reports["Ad Expense Report"] = {
       options: "Source",
     },
     {
-      fieldname: "subsource",
-      label: __("Sub Source"),
-      fieldtype: "Select",
-      options: ["", "Facebook", "Instagram"],
+      fieldname: "ad_id",
+      label: __("Ad ID"),
+      fieldtype: "Data",
     },
   ],
+};
+
+const setupShowDetailHandler = function (report) {
+  const wrapper = report.page.wrapper;
+  wrapper.off("click.ad_expense_show_detail");
+  wrapper.on("click.ad_expense_show_detail", ".ad-expense-show-detail", function () {
+    const $button = $(this);
+    const source = decodeURIComponent($button.attr("data-source") || "");
+    const campaign_name = decodeURIComponent($button.attr("data-campaign-name") || "");
+    const ad_id = decodeURIComponent($button.attr("data-ad-id") || "");
+
+    frappe.call({
+      method:
+        "frappe_hfhg.frappe_hfhg.report.ad_expense_report.ad_expense_report.get_row_lifetime_details",
+      args: { source, campaign_name, ad_id },
+      freeze: true,
+      freeze_message: __("Fetching details..."),
+      callback: function (r) {
+        const details = r.message || {};
+        const lifetimeExpense = details.lifetime_expense || 0;
+        const lifetimeRevenue = details.lifetime_revenue || 0;
+        frappe.msgprint({
+          title: __("Lifetime Details"),
+          message: `
+            <div>
+              <p><strong>${__("Leads Generated")}:</strong> ${details.leads_created_lifetime || 0}</p>
+              <p><strong>${__("Booking Count")}:</strong> ${details.costings_created_lifetime || 0}</p>
+              <p><strong>${__("Surgery Count")}:</strong> ${details.surgeries_created_lifetime || 0}</p>
+              <p><strong>${__("Lifetime Expense")}:</strong> ₹ ${frappe.format(lifetimeExpense, {fieldtype: 'Float', precision: 2})}</p>
+              <p><strong>${__("Lifetime Revenue")}:</strong> ₹ ${frappe.format(lifetimeRevenue, {fieldtype: 'Float', precision: 2})}</p>
+            </div>
+          `,
+          indicator: "blue",
+        });
+      },
+    });
+  });
 };
 
 const updateSummary = function (report) {
@@ -88,71 +131,55 @@ const updateSummary = function (report) {
     callback: function (r) {
       if (r.message && r.message[1]) {
         let data = r.message[1];
-        
-        const filters = report.get_values() || {};
-        const groupBy = filters.group_by || "Campaign";
-        const countLabel = groupBy === "Campaign" ? __("Campaigns") : groupBy === "Form" ? __("Forms") : __("Ads");
-        
+
         // Calculate totals
         let totalExpense = 0;
-        let total_lifetime_revenue = 0;
-        let total_period_revenue = 0;
-        let total_profit = 0;
-        
+        let totalLeads = 0;
+        let totalSurgeryRevenue = 0;
+
         data.forEach(function(row) {
           totalExpense += row.total_expense || 0;
-          total_lifetime_revenue += row.lifetime_revenue || 0;
-          total_period_revenue += row.period_revenue || 0;
-          total_profit += row.net_profit || 0;
+          totalLeads += row.leads_in_period || 0;
+          totalSurgeryRevenue += row.surgery_revenue || 0;
         });
-        
-        let avg_roi = 0;
-        if (totalExpense > 0) {
-          avg_roi = ((total_period_revenue - totalExpense) / totalExpense) * 100;
-        }
-        
+        const avgCpl = totalLeads > 0 ? (totalExpense / totalLeads) : 0;
+
         // Remove existing summary
         report.page.wrapper.find(".campaign-roi-summary").remove();
-        
+
         // Build summary HTML
         let summary_parts = [];
-        
+
         summary_parts.push(`
           <h5 style="margin: 0;">
-            <strong>${countLabel}:</strong> ${data.length}
+            <strong>${__("Rows")}:</strong> ${data.length}
           </h5>
         `);
-        
+
         summary_parts.push(`
           <h5 style="margin: 0; color: #d9534f;">
-            <strong>Total Expense:</strong> ₹ ${frappe.format(totalExpense, {fieldtype: 'Float', precision: 2})}
+            <strong>${__("Total Expense")}:</strong> ₹ ${frappe.format(totalExpense, {fieldtype: 'Float', precision: 2})}
           </h5>
         `);
-        
+
         summary_parts.push(`
           <h5 style="margin: 0; color: #0d6efd;">
-            <strong>Lifetime Revenue:</strong> ₹ ${frappe.format(total_lifetime_revenue, {fieldtype: 'Float', precision: 2})}
+            <strong>${__("Leads Generated")}:</strong> ${totalLeads}
           </h5>
         `);
-        
+
         summary_parts.push(`
           <h5 style="margin: 0; color: #5cb85c;">
-            <strong>Period Revenue:</strong> ₹ ${frappe.format(total_period_revenue, {fieldtype: 'Float', precision: 2})}
+            <strong>${__("Surgery Revenue")}:</strong> ₹ ${frappe.format(totalSurgeryRevenue, {fieldtype: 'Float', precision: 2})}
           </h5>
         `);
-        
+
         summary_parts.push(`
-          <h5 style="margin: 0; color: ${total_profit >= 0 ? '#5cb85c' : '#d9534f'};">
-            <strong>Net Profit:</strong> ₹ ${frappe.format(total_profit, {fieldtype: 'Float', precision: 2})}
+          <h5 style="margin: 0; color: #7952b3;">
+            <strong>${__("Average CPL")}:</strong> ₹ ${frappe.format(avgCpl, {fieldtype: 'Float', precision: 2})}
           </h5>
         `);
-        
-        summary_parts.push(`
-          <h5 style="margin: 0; color: ${avg_roi >= 0 ? '#5cb85c' : '#d9534f'};">
-            <strong>Avg ROI:</strong> ${avg_roi.toFixed(2)}%
-          </h5>
-        `);
-        
+
         let summary_html = `
           <div class="campaign-roi-summary" style="margin-left: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             ${summary_parts.join('')}
@@ -169,76 +196,4 @@ const updateSummary = function (report) {
       }
     },
   });
-  
-  report.refresh();
 };
-
-function setupAdDetailsButton(report) {
-  report.page.wrapper.off("click", ".ad-details-btn");
-  report.page.wrapper.on("click", ".ad-details-btn", function (event) {
-    event.preventDefault();
-    event.stopPropagation();
-    const button = event.currentTarget;
-    const adId = button.getAttribute("data-ad-id");
-    const adLabel = button.getAttribute("data-ad-label");
-
-    if (!adId) {
-      frappe.msgprint({
-        title: __("Details"),
-        message: __("Ad ID not found for this row."),
-        indicator: "orange",
-      });
-      return;
-    }
-
-    const filters = report.get_values();
-
-    frappe.call({
-      method:
-        "frappe_hfhg.frappe_hfhg.report.ad_expense_report.ad_expense_report.get_ad_activity_stats",
-      args: {
-        ad_id: adId,
-        from_date: filters.from_date,
-        to_date: filters.to_date,
-      },
-      freeze: true,
-      freeze_message: __("Fetching ad details..."),
-      callback: function (r) {
-        if (!r.message) {
-          frappe.msgprint({
-            title: __("Details"),
-            message: __("No data found."),
-            indicator: "orange",
-          });
-          return;
-        }
-
-        const stats = r.message;
-        const html = `
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <div><strong>${__("Leads Created")}:</strong> ${stats.leads_created || 0}</div>
-            <div><strong>${__("Consultations Created")}:</strong> ${stats.consultations_created || 0}</div>
-            <div><strong>${__("Booked Leads")}:</strong> ${stats.booked_leads || 0}</div>
-            <div><strong>${__("Surgeries Completed")}:</strong> ${stats.surgeries_completed || 0}</div>
-          </div>
-          <div style="margin-top: 10px; font-size: 12px; color: #666;">
-            ${__("Counts limited to the selected date range")}
-          </div>
-        `;
-
-        frappe.msgprint({
-          title: `${__("Ad Details")}: ${adLabel || adId}`,
-          message: html,
-          indicator: "blue",
-        });
-      },
-      error: function (err) {
-        frappe.msgprint({
-          title: __("Details"),
-          message: err.message || __("Failed to fetch ad details."),
-          indicator: "red",
-        });
-      },
-    });
-  });
-}

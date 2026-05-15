@@ -1,9 +1,38 @@
+import re
+
 import frappe
 from frappe.model.document import Document
 import pandas as pd
 import os
 from frappe import _
-from frappe.utils import formatdate
+from frappe.utils import formatdate, flt
+
+
+def _normalize_excel_header(name):
+    """Strip BOM, NBSP, odd whitespace so headers match the mapping."""
+    s = str(name).strip()
+    s = s.replace("\ufeff", "").replace("\xa0", " ")
+    s = re.sub(r"\s+", " ", s)
+    return s.casefold().strip()
+
+
+# Logical field → acceptable header texts (after _normalize_excel_header)
+EXCEL_COLUMN_ALIASES = {
+    "campaign_name": ("campaign name", "campaign", "campaign_name"),
+    "cost": ("cost",),
+    "gst_amount": ("gst amount", "gst", "gst amt", "gstamount"),
+    "total_amount": ("total amount", "total", "total amt", "totalamount"),
+    "form_id": ("form id", "formid", "lead form", "meta lead form"),
+    "ad_id": ("ad id", "adid", "ad_id"),
+    "source": (
+        "source",
+        "mode",
+        "expense source",
+        "channel",
+        "sourcce",
+        "sources",
+    ),
+}
 
 class CampaignExpense(Document):
     def validate(self):
@@ -56,68 +85,175 @@ class CampaignExpense(Document):
             
             # Read Excel file
             df = pd.read_excel(full_file_path)
-            
-            # Strip spaces from column names for easier matching
-            df.columns = df.columns.str.strip()
-            
-            # Expected columns: Campaign name, Cost, GST amount, Total amount
-            # Form ID is optional and can be blank per row.
-            required_columns = {"Campaign name", "Cost", "GST amount", "Total amount"}
-            missing_columns = required_columns - set(df.columns)
-            if missing_columns:
+
+            # Keep stable pandas column labels (original stripped) for row[col] access
+            raw_headers = [str(c).strip() for c in df.columns]
+            df.columns = raw_headers
+
+            norm_to_actual = {}
+            for col in df.columns:
+                nk = _normalize_excel_header(col)
+                if nk and nk not in norm_to_actual:
+                    norm_to_actual[nk] = col
+
+            def resolve_column(field_key):
+                for alias in EXCEL_COLUMN_ALIASES.get(field_key, ()):
+                    a = _normalize_excel_header(alias)
+                    if a in norm_to_actual:
+                        return norm_to_actual[a]
+                return None
+
+            def resolve_source_column():
+                """Map Excel → DocType field `source` (fieldname must stay `source`)."""
+                col = resolve_column("source")
+                if col:
+                    return col
+                for norm, actual in norm_to_actual.items():
+                    if "source" in norm:
+                        return actual
+                return None
+
+            col_campaign = resolve_column("campaign_name")
+            col_cost = resolve_column("cost")
+            col_gst = resolve_column("gst_amount")
+            col_total = resolve_column("total_amount")
+            col_form = resolve_column("form_id")
+            col_ad = resolve_column("ad_id")
+            col_source = resolve_source_column()
+            required = {
+                "Campaign name": col_campaign,
+                "Cost": col_cost,
+                "GST amount": col_gst,
+                "Total amount": col_total,
+                "Source": col_source,
+            }
+            missing = [label for label, c in required.items() if c is None]
+            if missing:
+                found = ", ".join(repr(c) for c in df.columns)
                 frappe.throw(
                     _(
-                        "Missing required columns in uploaded file: {0}".format(
-                            ", ".join(sorted(missing_columns))
-                        )
-                    )
+                        "Missing required columns: {0}. Columns found in file: {1}"
+                    ).format(", ".join(missing), found or "(none)")
                 )
 
             created_count = 0
             duplicate_count = 0
-            
+            parent_row_merged = False
+
             def normalize_identifier(value):
                 if pd.isna(value):
                     return ""
                 if isinstance(value, float) and value.is_integer():
                     value = int(value)
                 return str(value).strip()
-            
+
+            def cell_raw(row, col_name):
+                if col_name is None:
+                    return None
+                return row[col_name]
+
+            def cell_str_from_col(row, col_name):
+                val = cell_raw(row, col_name)
+                if val is None or pd.isna(val):
+                    return ""
+                if isinstance(val, float) and val.is_integer():
+                    val = int(val)
+                return str(val).strip()
+
+            def cell_float_from_col(row, col_name):
+                val = cell_raw(row, col_name)
+                if val is None or pd.isna(val):
+                    return 0.0
+                return float(val)
+
             for index, row in df.iterrows():
                 try:
-                    # Form ID (Meta Lead Form) is optional for imports
-                    form_id = normalize_identifier(row.get('Form ID', ''))
+                    form_id = normalize_identifier(cell_raw(row, col_form))
+                    ad_id_excel = normalize_identifier(cell_raw(row, col_ad))
+                    source_val = cell_str_from_col(row, col_source)
 
-                    # Get campaign from 'Campaign name' column
-                    campaign_name = str(row.get('Campaign name', '')).strip()
+                    campaign_name = cell_str_from_col(row, col_campaign)
 
                     meta_lead_form = form_id or None
-                    ad_id = normalize_identifier(
+                    ad_id_from_form = normalize_identifier(
                         frappe.db.get_value("Meta Lead Form", meta_lead_form, "ads")
                     ) if meta_lead_form else ""
-                    
+                    meta_ad_link = ad_id_from_form
+                    if ad_id_excel and frappe.db.exists("Meta Ads", ad_id_excel):
+                        meta_ad_link = ad_id_excel
+                    ads_value = ad_id_excel or ad_id_from_form or meta_lead_form
+
                     expense_date = self.date or frappe.utils.today()
-                    
-                    existing_entries = self.get_campaign_entries_count(expense_date, campaign_name)
-                    # Allow only 1 entry per campaign per date; skip duplicates.
+
+                    parent_campaign = (getattr(self, "campaign", None) or "").strip()
+                    parent_date = getattr(self, "date", None)
+                    same_as_upload_row = (
+                        parent_campaign.casefold() == campaign_name.casefold()
+                        and parent_date is not None
+                        and str(parent_date) == str(expense_date)
+                    )
+
+                    if same_as_upload_row:
+                        if parent_row_merged:
+                            duplicate_count += 1
+                            continue
+                        parent_row_merged = True
+                        # DocType fieldname is `source` (matches DB column `source`)
+                        src_db = source_val if source_val else None
+                        
+                        self.source = src_db
+                        self.ad_id = ad_id_excel or None
+                        self.meta_lead_form = meta_lead_form
+                        self.ads = ads_value
+                        if meta_ad_link:
+                            self.meta_ad_id = meta_ad_link
+                        self.amount = flt(cell_float_from_col(row, col_cost))
+                        self.gst_amount = flt(cell_float_from_col(row, col_gst))
+                        self.total_amount = flt(cell_float_from_col(row, col_total))
+
+                        frappe.db.set_value(
+                            "Campaign Expense",
+                            self.name,
+                            {
+                                "source": self.source,
+                                "ad_id": self.ad_id,
+                                "meta_lead_form": self.meta_lead_form,
+                                "ads": self.ads,
+                                "meta_ad_id": getattr(self, "meta_ad_id", None),
+                                "amount": self.amount,
+                                "gst_amount": self.gst_amount,
+                                "total_amount": self.total_amount,
+                            },
+                            update_modified=True,
+                        )
+                        frappe.clear_document_cache("Campaign Expense", self.name)
+                        created_count += 1
+                        continue
+
+                    existing_entries = self.get_campaign_entries_count(
+                        expense_date, campaign_name, exclude_name=self.name
+                    )
                     if existing_entries >= 1:
                         duplicate_count += 1
                         continue
-                    
-                    # Create Campaign Expense entry directly
+
                     expense = frappe.new_doc("Campaign Expense")
                     expense.meta_lead_form = meta_lead_form
-                    expense.ads = ad_id or meta_lead_form
-                    expense.meta_ad_id = ad_id if ad_id else None
+                    expense.ad_id = ad_id_excel or None
+                    expense.ads = ads_value
+                    expense.meta_ad_id = meta_ad_link if meta_ad_link else None
                     expense.campaign = campaign_name
                     expense.date = expense_date
+
+                    expense.amount = cell_float_from_col(row, col_cost)
+                    expense.gst_amount = cell_float_from_col(row, col_gst)
+                    expense.total_amount = cell_float_from_col(row, col_total)
                     
-                    # Get amounts from exact column names
-                    expense.amount = float(row.get('Cost', 0) or 0)
-                    expense.gst_amount = float(row.get('GST amount', 0) or 0)
-                    expense.total_amount = float(row.get('Total amount', 0) or 0)
+                    if source_val:
+                        expense.source = source_val
+                        
                     expense.insert(ignore_permissions=True)
-                    
+
                     created_count += 1
                     
                 except Exception as row_error:
