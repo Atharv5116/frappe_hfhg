@@ -66,10 +66,15 @@ frappe.query_reports["Consultation Report"] = {
       fieldtype: "Select",
       options: [
         "",
+        "Scheduled",
         "Booked",
+        "Spot Booking",
         "Non Booked",
         "Medi-PRP",
-        "Spot Booking"   
+        "Not Visited",
+        "Rescheduled",
+        "Medication",
+        "Followup",
       ],
     },
     {
