@@ -187,7 +187,7 @@ formatter: function(value, row, column, data, default_formatter) {
 		fieldname: "technique",
 		label: __("Technique"),
 		fieldtype: "Select",
-		options: ["", "FUE", "B-FUE", "I-FUE", "Big-FUE", "DHI"],
+		options: ["", "FUE", "B-FUE", "I-FUE", "Big-FUE", "DHI","DHT","Sapphire FUE"],
 	  },
 	  {
 		fieldname: "status",
